@@ -16,7 +16,8 @@ def bsp_tools_path(soctype: str, bspversion: str) -> str:
 
 
 class TegraSigner:
-    script_symlinks = ['tegraflash.py', 'tegraflash_internal.py']
+    script_symlinks = ['tegraflash.py', 'tegraflash_internal.py', 'BUP_generator.py',
+                       os.path.join('rollback', 'rollback_parser.py')]
 
     def __init__(self, machine: str, soctype: str, bspversion: str):
         # TBD: tegra194, tegra210
@@ -32,6 +33,9 @@ class TegraSigner:
     def _symlink_scripts(self, workdir: str):
         self._remove_scripts(workdir)
         for script in self.script_symlinks:
+            subdir = os.path.dirname(script)
+            if subdir:
+                os.makedirs(os.path.join(workdir, subdir), exist_ok=True)
             os.symlink(os.path.join(self.toolspath, script),
                        os.path.join(workdir, script))
 
@@ -81,7 +85,7 @@ class TegraSigner:
             # For flashing, we return all the signed/encrypted files
             if bupgen:
                 utils.remove_files([os.path.join(workdir, fname)
-                                    for fname in os.listdir(workdir) if not fname.endswith('_payload')])
+                                    for fname in os.listdir(workdir) if not fname.startswith('payloads')])
             else:
                 utils.remove_files([os.path.join(workdir, fname) for fname in to_remove])
             return True
