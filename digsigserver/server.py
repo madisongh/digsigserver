@@ -52,7 +52,7 @@ def parse_manifest(manifest_file: str) -> dict:
 
 
 @app.post("/sign/tegra")
-async def sign_handler_tegras(req: request):
+async def sign_handler_tegra(req: request):
     try:
         s = TegraSigner(req.form.get("machine"), req.form.get("soctype"), req.form.get("bspversion"))
     except ValueError:
