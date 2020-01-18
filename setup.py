@@ -2,10 +2,15 @@ from setuptools import setup, find_packages
 
 setup(
     name='digsigserver',
-    version='0.0.0',
+    version='0.1.0',
     packages=find_packages(),
     license='MIT',
     author='Matt Madison',
     author_email='matt@madison.systems',
+    entry_points={
+        'console_scripts': [
+            'digsigserver = digsigserver.scripts.digsigserver:main',
+        ]
+    },
     install_requires=['sanic']
 )
