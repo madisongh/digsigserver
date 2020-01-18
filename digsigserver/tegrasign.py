@@ -36,8 +36,14 @@ class TegraSigner:
             subdir = os.path.dirname(script)
             if subdir:
                 os.makedirs(os.path.join(workdir, subdir), exist_ok=True)
-            os.symlink(os.path.join(self.toolspath, script),
-                       os.path.join(workdir, script))
+            src = os.path.join(self.toolspath, script)
+            dest = os.path.join(workdir, script)
+            if script.endswith('.py') and not script.startswith('tegraflash'):
+                with open(os.path.join(workdir, script), 'w') as f:
+                    f.write('#!/bin/sh\npython {} "$@"\n'.format(src))
+                os.chmod(dest, 0o755)
+            else:
+                os.symlink(src, dest)
 
     def _remove_scripts(self, workdir: str):
         utils.remove_files([os.path.join(workdir, script) for script in self.script_symlinks])
@@ -91,5 +97,5 @@ class TegraSigner:
             return True
         except subprocess.CalledProcessError as e:
             self.keys.cleanup()
-            logger.warning("signing error: {}".format(e.stderr))
+            logger.warning("signing error, stdout: {}\nstderr: {}".format(e.stdout, e.stderr))
         return False
