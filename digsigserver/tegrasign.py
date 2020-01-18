@@ -40,7 +40,7 @@ class TegraSigner:
             dest = os.path.join(workdir, script)
             if script.endswith('.py') and not script.startswith('tegraflash'):
                 with open(os.path.join(workdir, script), 'w') as f:
-                    f.write('#!/bin/sh\npython {} "$@"\n'.format(src))
+                    f.write('#!/bin/sh\npython2 {} "$@"\n'.format(src))
                 os.chmod(dest, 0o755)
             else:
                 os.symlink(src, dest)
