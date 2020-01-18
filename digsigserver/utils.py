@@ -69,9 +69,9 @@ def uri_fetch(uri: str, dest: str, is_dir=False):
     if u.scheme == 'file' or u.scheme == '':
         if is_dir:
             for f in os.listdir(u.path):
-                shutil.copyfile(os.path.join(u.path, f), os.path.join(destdir, f))
+                shutil.copyfile(os.path.join(u.path, f), os.path.join(dest, f))
         else:
-            shutil.copyfile(u.path, os.path.join(destdir, os.path.basename(u.path)))
+            shutil.copyfile(u.path, dest)
         return
     if u.scheme == 's3':
         cmd = ['aws', 's3', 'cp', uri, dest]
