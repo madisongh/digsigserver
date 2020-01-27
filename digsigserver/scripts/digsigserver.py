@@ -1,6 +1,8 @@
 import argparse
 import os
+import sys
 from digsigserver.server import app
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -12,6 +14,7 @@ def main():
         raise RuntimeError('Environment variable DIGSIGSERVER_KEYFILE_URI not set')
     app.run(host=args.address, port=args.port, debug=args.debug)
 
+
 if __name__ == '__main__':
     try:
         main()
@@ -20,5 +23,6 @@ if __name__ == '__main__':
         pass
     except Exception:
         import traceback
+
         traceback.print_exc(5)
         sys.exit(1)

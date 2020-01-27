@@ -67,7 +67,10 @@ async def sign_handler_tegra(req: request):
                 envvars = parse_manifest(os.path.join(workdir, 'MANIFEST'))
             except ValueError:
                 return text("Invalid manifest", status=400)
-            result = await asyncio.get_running_loop().run_in_executor(None, s.sign, envvars, workdir)
+            if 'BUPGENSPECS' in envvars:
+                result = await asyncio.get_running_loop().run_in_executor(None, s.multisign, envvars, workdir)
+            else:
+                result = await asyncio.get_running_loop().run_in_executor(None, s.sign, envvars, workdir)
             if result:
                 with tempfile.NamedTemporaryFile() as outfile:
                     if await asyncio.get_running_loop().run_in_executor(None, utils.repack_files,

@@ -99,3 +99,44 @@ class TegraSigner:
             self.keys.cleanup()
             logger.warning("signing error, stdout: {}\nstderr: {}".format(e.stdout, e.stderr))
         return False
+
+    def multisign(self, envvars: dict, workdir: str) -> bool:
+        env = copy.deepcopy(envvars)
+        curpath = os.getenv('PATH')
+        env['PATH'] = self.toolspath
+        if curpath:
+            env['PATH'] += ':' + curpath
+        env['MACHINE'] = self.machine
+        self._symlink_scripts(workdir)
+        pkc = self.keys.get('rsa_priv.pem')
+        try:
+            sbk = self.keys.get('sbk.txt')
+        except FileNotFoundError:
+            sbk = None
+        cmd = ["{}-flash-helper".format(self.soctype), '--bup', '-u', pkc]
+        if sbk:
+            cmd += ['-v', sbk]
+        cmd += ['flash.xml.in', env['DTBFILE'], '{}.cfg'.format(self.machine),
+                env['ODMDATA'], env['LNXFILE']]
+        for spec in env['BUPGENSPECS'].split():
+            localenv = copy.deepcopy(env)
+            for setting in spec.split(';'):
+                var, val = setting.split('=')
+                logger.debug('Setting: {}={}'.format(var.upper(), val))
+                localenv[var.upper()] = val
+            try:
+                logger.info("Running: {}".format(cmd))
+                proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, cwd=workdir,
+                                      env=localenv, check=True, capture_output=True,
+                                      encoding='utf-8')
+                logger.debug("stdout: {}".format(proc.stdout))
+                logger.debug("stderr: {}".format(proc.stderr))
+            except subprocess.CalledProcessError as e:
+                self.keys.cleanup()
+                logger.warning("signing error, stdout: {}\nstderr: {}".format(e.stdout, e.stderr))
+                return False
+
+        self.keys.cleanup()
+        utils.remove_files([os.path.join(workdir, fname)
+                            for fname in os.listdir(workdir) if not fname.startswith('payloads')])
+        return True
