@@ -47,8 +47,8 @@ directory for the BSP.  For example (for R32.2.3):
 If you are supporting Jetson TX2 devices that use both PKC signing and SBK encryption
 of bootloader files, you will also need to apply a patch from meta-tegra:
 
-    $ P=/path/to/meta-tegra/recipes-bsp/tegra/binaries/files
-    $ cd /opt/nvidia/L4T-32.2.3-tegra186/Linux_for_Tegra/bootloader
+    $ P=/path/to/meta-tegra/recipes-bsp/tegra-binaries/files
+    $ cd /opt/nvidia/L4T-32.2.3-tegra186/Linux_for_Tegra
     $ sudo patch -p1 < $P/0002-Update-l4t_bup_gen.func-to-handle-signed-encrypted-b.patch
 
 ### Prerequisites: Kernel module signing
