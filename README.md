@@ -178,7 +178,7 @@ Response: no body, just a status code
 Example client: [mendersign.bbclass](https://github.com/madisongh/test-distro/blob/zeus-mender/layers/meta-testdistro/classes/mendersign.bbclass)
  
 ## Securing signing keys
-Signing keys should obviously kept as secure as possible, but the specifics of doing
+Signing keys should obviously be kept as secure as possible, but the specifics of doing
 that will depend on your specific workflows and facilities.  `digsigserver` does not
 manage the storage of signing keys, but expects to be able to retrieve them via the
 URI that you configure when they are needed.
