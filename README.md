@@ -2,7 +2,7 @@
 A simple server for processing signing requests via a REST interface, intended for
 use with a cross-build system for embedded Linux. It currently handles signing
 requests for:
-* NVIDIA Jetson bootloader signing (currently limited to Jetson-TX2)
+* NVIDIA Jetson bootloader signing
 * Kernel module signing
 * Mender artifact signing
 
@@ -44,8 +44,9 @@ directory for the BSP.  For example (for R32.2.3):
     $ sudo install -m 0755 tegra194-flash-helper.sh \
       /opt/nvidia/L4T-32.2.3-tegra186/Linux_for_Tegra/bootloader/tegra194-flash-helper   
  
-If you are supporting Jetson TX2 devices that use both PKC signing and SBK encryption
-of bootloader files, you will also need to apply a patch from meta-tegra:
+If you are supporting Jetson TX2 or Jetson AGX Xavier devices that use both PKC
+signing and SBK encryption of bootloader files, you will also need to apply a
+patch from meta-tegra:
 
     $ P=/path/to/meta-tegra/recipes-bsp/tegra-binaries/files
     $ cd /opt/nvidia/L4T-32.2.3-tegra186/Linux_for_Tegra
