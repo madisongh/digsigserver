@@ -29,5 +29,9 @@ class KeyFiles:
         raise FileNotFoundError('No key file named {}'.format(keyname))
 
     def cleanup(self):
-        self.tmpdir.cleanup()
+        if self.tmpdir:
+            try:
+                self.tmpdir.cleanup()
+            except FileNotFoundError:
+                pass
         self.tmpdir = None
