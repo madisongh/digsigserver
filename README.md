@@ -16,11 +16,11 @@ For Jetson bootloader signing, you must download the Linux4Tegra BSP and
 secure boot packages from [NVIDIA's L4T download site](https://developer.nvidia.com/embedded/linux-tegra).
 You must unpack the two tarballs into a specific location in the filesystem
 based on the version and target architecture of the BSP, so they can be found
-by the server.  For example, for L4T R32.2.3 for Jetson TX2/Xavier, you would enter:
+by the server.  For example, for L4T R32.4.3 for Jetson TX2/Xavier, you would enter:
 
-    $ sudo mkdir -p /opt/nvidia/L4T-32.2.3-tegra186
-    $ sudo tar -C /opt/nvidia/L4T-32.2.3-tegra186 -x Tegra186_Linux_R32.2.3_aarch64.tbz2
-    $ sudo tar -C /opt/nvidia/L4T-32.2.3-tegra186 -x secureboot_R32.2.3_aarch64.tbz2
+    $ sudo mkdir -p /opt/nvidia/L4T-32.4.3-tegra186
+    $ sudo tar -C /opt/nvidia/L4T-32.4.3-tegra186 -xf Tegra186_Linux_R32.4.3_aarch64.tbz2
+    $ sudo tar -C /opt/nvidia/L4T-32.4.3-tegra186 -xf secureboot_R32.4.3_aarch64.tbz2
 
 You can use a different top-level path than `/opt/nvidia` by setting the environment
 variable DIGSIGSERVER_L4T_TOOLS_BASE. The top-level directory under that base path
@@ -31,26 +31,26 @@ installed.
 
 For each BSP version/architecture, you also need a helper script (and possibly a
 patch to apply to NVIDIA's scripts), available from the [meta-tegra repository](https://github.com/madisongh/meta-tegra).
-For L4T R32.2.3, checkout the **zeus** branch of that repository. The helper scripts
-are at `recipes-bsp/tegra-binaries/files/tegraXXX-flash-helper.sh`.  For L4T R32.3.1,
-checkout the **zeus-l4t-r32.3.1** branch, and the helper scripts are at
+For L4T R32.4.3, checkout the **dunfell** branch of that repository. The helper scripts
+are at `recipes-bsp/tegra-binaries/files/tegraXXX-flash-helper.sh`.  For L4T R32.4.3,
+checkout the **dunfell-l4t-r32.4.3** branch, and the helper scripts are at
 `recipes-bsp/tegra-binaries/tegra-helper-scripts/tegraXXX-flash-helper.sh`. The
 needed script(s) should get installed without the `.sh` suffix into the `bootloader`
-directory for the BSP.  For example (for R32.2.3):
+directory for the BSP.  For example (for R32.4.3):
 
-    $ cd /path/to/meta-tegra/recipes-bsp/tegra-binaries/files
+    $ cd /path/to/meta-tegra/recipes-bsp/tegra-binaries/tegra-helper-scripts
     $ sudo install -m 0755 tegra186-flash-helper.sh \
-      /opt/nvidia/L4T-32.2.3-tegra186/Linux_for_Tegra/bootloader/tegra186-flash-helper   
+      /opt/nvidia/L4T-32.4.3-tegra186/Linux_for_Tegra/bootloader/tegra186-flash-helper
     $ sudo install -m 0755 tegra194-flash-helper.sh \
-      /opt/nvidia/L4T-32.2.3-tegra186/Linux_for_Tegra/bootloader/tegra194-flash-helper   
+      /opt/nvidia/L4T-32.4.3-tegra186/Linux_for_Tegra/bootloader/tegra194-flash-helper
  
 If you are supporting Jetson TX2 or Jetson AGX Xavier devices that use both PKC
 signing and SBK encryption of bootloader files, you will also need to apply a
 patch from meta-tegra:
 
     $ P=/path/to/meta-tegra/recipes-bsp/tegra-binaries/files
-    $ cd /opt/nvidia/L4T-32.2.3-tegra186/Linux_for_Tegra
-    $ sudo patch -p1 < $P/0002-Update-l4t_bup_gen.func-to-handle-signed-encrypted-b.patch
+    $ cd /opt/nvidia/L4T-32.4.3-tegra186/Linux_for_Tegra
+    $ sudo patch -p1 < $P/0002-Fix-typo-in-l4t_bup_gen.func.patch
 
 ### Prerequisites: Kernel module signing
 For kernel module signing, your Linux distribution must have the `sign-file` tool
@@ -133,7 +133,7 @@ Endpoint: `/sign/tegra`
 Expected parameters:
 * `machine=<machine-name>` - a name for the device, used to locate the signing keys
 * `soctype=<soctype>` - currently only supports `tegra186` as the SoC type.
-* `bspversion=<l4t-version>` - the L4T BSP version, e.g. `32.2.3`
+* `bspversion=<l4t-version>` - the L4T BSP version, e.g. `32.4.3`
 * `artifact=<body>` - gzip-compressed tarball containing the binaries to be signed
 
 The artifact tarball must also include a `MANIFEST` file with additional
