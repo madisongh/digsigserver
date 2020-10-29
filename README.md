@@ -31,8 +31,8 @@ installed.
 
 For each BSP version/architecture, you also need a helper script (and possibly a
 patch to apply to NVIDIA's scripts), available from the [meta-tegra repository](https://github.com/madisongh/meta-tegra).
-For L4T R32.4.3, checkout the **dunfell** branch of that repository. The helper scripts
-are at `recipes-bsp/tegra-binaries/files/tegraXXX-flash-helper.sh`.  For L4T R32.4.3,
+For L4T R32.4.3, checkout the **dunfell-l4t-r32.4.3** branch of that repository. The helper scripts
+are at `recipes-bsp/tegra-binaries/tegra-helper-scripts/tegraXXX-flash-helper.sh`.  For L4T R32.4.3,
 checkout the **dunfell-l4t-r32.4.3** branch, and the helper scripts are at
 `recipes-bsp/tegra-binaries/tegra-helper-scripts/tegraXXX-flash-helper.sh`. The
 needed script(s) should get installed without the `.sh` suffix into the `bootloader`
