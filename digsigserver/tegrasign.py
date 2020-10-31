@@ -81,8 +81,13 @@ class TegraSigner:
                '--bup' if bupgen else '--no-flash', '-u', pkc]
         if sbk:
             cmd += ['-v', sbk]
-        cmd += ['flash.xml.in', env['DTBFILE'], '{}.cfg'.format(self.machine),
+        if self.soctype == 'tegra194':
+            cmd += ['flash.xml.in', env['DTBFILE'], '{0}.cfg,{0}-override.cfg'.format(self.machine),
                 env['ODMDATA']]
+        else:
+            cmd += ['flash.xml.in', env['DTBFILE'], '{}.cfg'.format(self.machine),
+                env['ODMDATA']]
+
         if self.soctype == 'tegra210':
             cmd.append(env['boardcfg'])
         cmd.append(env['LNXFILE'])
@@ -126,7 +131,11 @@ class TegraSigner:
         cmd = ["{}-flash-helper".format(self.soctype), '--bup', '-u', pkc]
         if sbk:
             cmd += ['-v', sbk]
-        cmd += ['flash.xml.in', env['DTBFILE'], '{}.cfg'.format(self.machine),
+        if self.soctype == 'tegra194':
+            cmd += ['flash.xml.in', env['DTBFILE'], '{0}.cfg,{0}-override.cfg'.format(self.machine),
+                env['ODMDATA']]
+        else:
+            cmd += ['flash.xml.in', env['DTBFILE'], '{}.cfg'.format(self.machine),
                 env['ODMDATA']]
         if self.soctype == 'tegra210':
             cmd.append(env['boardcfg'])
