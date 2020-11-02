@@ -45,6 +45,7 @@ async def my_handle_request(real_handler, req, write_cb, stream_cb):
     :return:
     """
     cancelled = False
+    req.ctx = None
     try:
         _ = await real_handler(req, write_cb, stream_cb)
     except asyncio.CancelledError as ce:
