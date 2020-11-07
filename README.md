@@ -29,14 +29,14 @@ version (without the "R" prefix) and <tegraXXX> is either `tegra186` for TX2/AGX
 `tegra210` for TX1/Nano. The server supports having multiple versions of the BSP
 installed.
 
-For each BSP version/architecture, you also need a helper script (and possibly a
-patch to apply to NVIDIA's scripts), available from the [meta-tegra repository](https://github.com/madisongh/meta-tegra).
+For each BSP version/architecture, you also need a helper script (and possibly one or more
+patches to apply to NVIDIA's scripts), available from the
+[meta-tegra repository](https://github.com/madisongh/meta-tegra).
+
 For L4T R32.4.3, checkout the **dunfell-l4t-r32.4.3** branch of that repository. The helper scripts
-are at `recipes-bsp/tegra-binaries/tegra-helper-scripts/tegraXXX-flash-helper.sh`.  For L4T R32.4.3,
-checkout the **dunfell-l4t-r32.4.3** branch, and the helper scripts are at
-`recipes-bsp/tegra-binaries/tegra-helper-scripts/tegraXXX-flash-helper.sh`. The
+are at `recipes-bsp/tegra-binaries/tegra-helper-scripts/tegraXXX-flash-helper.sh`. The
 needed script(s) should get installed without the `.sh` suffix into the `bootloader`
-directory for the BSP.  For example (for R32.4.3):
+directory for the BSP.  For example (for R32.4.3, TX2/Xavier):
 
     $ cd /path/to/meta-tegra/recipes-bsp/tegra-binaries/tegra-helper-scripts
     $ sudo install -m 0755 tegra186-flash-helper.sh \
@@ -45,12 +45,15 @@ directory for the BSP.  For example (for R32.4.3):
       /opt/nvidia/L4T-32.4.3-tegra186/Linux_for_Tegra/bootloader/tegra194-flash-helper
  
 If you are supporting Jetson TX2 or Jetson AGX Xavier devices that use both PKC
-signing and SBK encryption of bootloader files, you will also need to apply a
-patch from meta-tegra:
+signing and SBK encryption of bootloader files, you will also need to apply at
+least this patch from meta-tegra:
 
     $ P=/path/to/meta-tegra/recipes-bsp/tegra-binaries/files
     $ cd /opt/nvidia/L4T-32.4.3-tegra186/Linux_for_Tegra
     $ sudo patch -p1 < $P/0002-Fix-typo-in-l4t_bup_gen.func.patch
+
+Check the `tegraXXX-flashtools-native` recipes in meta-tegra to see if
+other patches might also be needed.
 
 ### Prerequisites: Kernel module signing
 For kernel module signing, your Linux distribution must have the `sign-file` tool
@@ -132,7 +135,7 @@ Endpoint: `/sign/tegra`
 
 Expected parameters:
 * `machine=<machine-name>` - a name for the device, used to locate the signing keys
-* `soctype=<soctype>` - currently only supports `tegra186` as the SoC type.
+* `soctype=<soctype>` - one of `tegra186`, `tegra194`, `tegra210`
 * `bspversion=<l4t-version>` - the L4T BSP version, e.g. `32.4.3`
 * `artifact=<body>` - gzip-compressed tarball containing the binaries to be signed
 
@@ -141,7 +144,7 @@ information about the hardware and contents of the tarball.
 
 Response: gzip-compressed tarball containing the signed binaries
 
-Example client: [tegrasign.bbclass](https://github.com/madisongh/test-distro/blob/zeus-mender/layers/meta-testdistro/classes/tegrasign.bbclass)
+Example client: [tegrasign.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/tegrasign.bbclass)
 
 ### Kernel module signing
 
@@ -156,7 +159,7 @@ Expected parameters:
 
 Response: gzip-compressed tarball containing the same tree of modules, signed
 
-Example client: [kernel-module-signing.bbclass](https://github.com/madisongh/test-distro/blob/zeus-mender/layers/meta-testdistro/classes/kernel-module-signing.bbclass)
+Example client: [kernel-module-signing.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/kernel-module-signing.bbclass)
 
 ### Mender artifact signing
 
@@ -176,7 +179,7 @@ the signed copy back to the same location.
 
 Response: no body, just a status code
 
-Example client: [mendersign.bbclass](https://github.com/madisongh/test-distro/blob/zeus-mender/layers/meta-testdistro/classes/mendersign.bbclass)
+Example client: [mendersign.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/mendersign.bbclass)
  
 ## Securing signing keys
 Signing keys should obviously be kept as secure as possible, but the specifics of doing
