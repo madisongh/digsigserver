@@ -16,11 +16,12 @@ from . import utils
 
 # Signing can take a loooong time, so set a more reasonable
 # default response timeout
-class CodesignSanicDefaults:
-    RESPONSE_TIMEOUT = 180
-    L4T_TOOLS_BASE = '/opt/nvidia'
-    KEYFILE_URI = 'file:///please/configure/this/path'
-    LOG_LEVEL = 'INFO'
+CodesignSanicDefaults = {
+    'RESPONSE_TIMEOUT': 180,
+    'L4T_TOOLS_BASE': '/opt/nvidia',
+    'KEYFILE_URI': 'file:///please/configure/this/path',
+    'LOG_LEVEL': 'INFO'
+}
 
 
 """
@@ -75,10 +76,10 @@ def wrap_handle_request(app_):
 Actual initialization happens here
 """
 app = Sanic(name='digsigserver', load_env=False)
-app.config.from_object(CodesignSanicDefaults)
+app.config.update_config(CodesignSanicDefaults)
 app.config.load_environment_vars(prefix='DIGSIGSERVER_')
 logger.setLevel(app.config.get("LOG_LEVEL"))
-app.handle_request = wrap_handle_request(app)
+app.ctx.handle_request = wrap_handle_request(app)
 
 
 def config_get(item: str, default_value=None) -> str:
