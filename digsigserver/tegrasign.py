@@ -17,12 +17,14 @@ def bsp_tools_path(soctype: str, bspversion: str) -> str:
 
 
 class TegraSigner:
-    script_symlinks = ['tegraflash.py', 'tegraflash_internal.py', 'BUP_generator.py',
+    SCRIPT_SYMLINKS = ['tegraflash.py', 'tegraflash_internal.py', 'BUP_generator.py',
                        os.path.join('rollback', 'rollback_parser.py')]
+    V2_SCRIPT_SYMLINKS = ['tegrasign_v3.py', 'tegrasign_v3_internal.py', 'tegrasign_v3_util.py']
 
-    def __init__(self, machine: str, soctype: str, bspversion: str):
+    def __init__(self, machine: str, soctype: str, bspversion: str, version: int):
         if soctype not in ['tegra186', 'tegra194', 'tegra210']:
             raise ValueError("soctype '{}' invalid".format(soctype))
+        self.version = version
         self.soctype = soctype
         self.machine = machine
         self.toolspath = bsp_tools_path(soctype, bspversion)
@@ -31,6 +33,9 @@ class TegraSigner:
         self.keys = KeyFiles('tegrasign', machine)
         bspmajor, bspminor = bspversion.split('.')[0:2]
         self.encrypted_kernel = int(bspmajor) > 32 or (int(bspmajor) == 32 and int(bspminor) >= 5)
+        self.script_symlinks = self.SCRIPT_SYMLINKS
+        if self.version > 1:
+            self.script_symlinks += self.V2_SCRIPT_SYMLINKS
 
     def _symlink_scripts(self, workdir: str):
         self._remove_scripts(workdir)
@@ -40,7 +45,8 @@ class TegraSigner:
                 os.makedirs(os.path.join(workdir, subdir), exist_ok=True)
             src = os.path.join(self.toolspath, script)
             dest = os.path.join(workdir, script)
-            if script.endswith('.py') and not script.startswith('tegraflash'):
+            if script.endswith('.py') and not (script.startswith('tegraflash') or
+                                               script.startswith('tegrasign_v3')):
                 with open(os.path.join(workdir, script), 'w') as f:
                     f.write('#!/bin/sh\npython2 {} "$@"\n'.format(src))
                 os.chmod(dest, 0o755)
@@ -86,10 +92,10 @@ class TegraSigner:
             cmd += ['-v', sbk]
         if self.soctype == 'tegra194':
             cmd += ['flash.xml.in', env['DTBFILE'], '{0}.cfg,{0}-override.cfg'.format(self.machine),
-                env['ODMDATA']]
+                    env['ODMDATA']]
         else:
             cmd += ['flash.xml.in', env['DTBFILE'], '{}.cfg'.format(self.machine),
-                env['ODMDATA']]
+                    env['ODMDATA']]
 
         if self.soctype == 'tegra210':
             cmd.append(env['boardcfg'])
@@ -109,6 +115,36 @@ class TegraSigner:
                                     for fname in os.listdir(workdir) if not fname.startswith('payloads')])
             else:
                 utils.remove_files([os.path.join(workdir, fname) for fname in to_remove])
+            return True
+        except subprocess.CalledProcessError as e:
+            self.keys.cleanup()
+            logger.warning("signing error, stdout: {}\nstderr: {}".format(e.stdout, e.stderr))
+        return False
+
+    def signfiles(self, envvars: dict, workdir: str) -> bool:
+        env = copy.deepcopy(envvars)
+        curpath = os.getenv('PATH')
+        env['PATH'] = self.toolspath
+        if curpath:
+            env['PATH'] += ':' + curpath
+        self._symlink_scripts(workdir)
+        # We want to return the minimal set of artifacts possible.
+        # For this method, it's just the '.sig' files generated for the
+        # files that were sent over
+        files_to_sign = os.listdir(workdir)
+        keep_files = [f + ".sig" for f in files_to_sign]
+        pkc = self.keys.get('rsa_priv.pem')
+        cmd = ["tegra-signimage-helper", "--chip 0x{}".format(self.soctype[5:7]), "-u", pkc] + files_to_sign
+        try:
+            logger.info("Running: {}".format(cmd))
+            proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, cwd=workdir,
+                                  env=env, check=True, capture_output=True,
+                                  encoding='utf-8')
+            self.keys.cleanup()
+            logger.debug("stdout: {}".format(proc.stdout))
+            logger.debug("stderr: {}".format(proc.stderr))
+            utils.remove_files([os.path.join(workdir, fname) for fname in os.listdir(workdir)
+                                if fname not in keep_files])
             return True
         except subprocess.CalledProcessError as e:
             self.keys.cleanup()
@@ -136,10 +172,10 @@ class TegraSigner:
             cmd += ['-v', sbk]
         if self.soctype == 'tegra194':
             cmd += ['flash.xml.in', env['DTBFILE'], '{0}.cfg,{0}-override.cfg'.format(self.machine),
-                env['ODMDATA']]
+                    env['ODMDATA']]
         else:
             cmd += ['flash.xml.in', env['DTBFILE'], '{}.cfg'.format(self.machine),
-                env['ODMDATA']]
+                    env['ODMDATA']]
         if self.soctype == 'tegra210':
             cmd.append(env['boardcfg'])
         cmd.append(env['LNXFILE'])
