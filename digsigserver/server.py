@@ -11,8 +11,8 @@ from sanic.response import text, file_stream
 from .tegrasign import TegraSigner
 from .kmodsign import KernelModuleSigner
 from .mendersign import MenderSigner
+from .swupdsign import SwupdateSigner
 from . import utils
-
 
 # Signing can take a loooong time, so set a more reasonable
 # default response timeout
@@ -22,7 +22,6 @@ CodesignSanicDefaults = {
     'KEYFILE_URI': 'file:///please/configure/this/path',
     'LOG_LEVEL': 'INFO'
 }
-
 
 """
 If a temporary file is being streamed back in response,
@@ -51,7 +50,7 @@ async def my_handle_request(real_handler, req, write_cb, stream_cb):
         _ = await real_handler(req, write_cb, stream_cb)
     except asyncio.CancelledError as ce:
         cancelled = ce
-    except BaseException as be:
+    except BaseException:
         raise
     finally:
         if req.ctx:
@@ -107,8 +106,17 @@ def parse_manifest(manifest_file: str) -> dict:
 
 @app.post("/sign/tegra")
 async def sign_handler_tegra(req: request):
+    return await sign_handler_tegra_common(req, 1)
+
+
+@app.post("/sign/tegrav2")
+async def sign_handler_tegra_v2(req: request):
+    return await sign_handler_tegra_common(req, 2)
+
+
+async def sign_handler_tegra_common(req: request, version):
     try:
-        s = TegraSigner(req.form.get("machine"), req.form.get("soctype"), req.form.get("bspversion"))
+        s = TegraSigner(req.form.get("machine"), req.form.get("soctype"), req.form.get("bspversion"), version)
     except ValueError:
         return text("Invalid parameters", status=400)
 
@@ -123,6 +131,8 @@ async def sign_handler_tegra(req: request):
                 return text("Invalid manifest", status=400)
             if 'BUPGENSPECS' in envvars:
                 result = await asyncio.get_running_loop().run_in_executor(None, s.multisign, envvars, workdir)
+            elif version > 1 and 'SIGNFILES' in envvars:
+                result = await asyncio.get_running_loop().run_in_executor(None, s.signfiles, envvars, workdir)
             else:
                 result = await asyncio.get_running_loop().run_in_executor(None, s.sign, envvars, workdir)
             if result:
@@ -166,6 +176,37 @@ async def sign_handler_modules(req: request):
                     return await file_stream(outfile.name,
                                              mime_type="application/octet-stream",
                                              filename="signed-artifact.tar.gz")
+    return text("Signing error", status=500)
+
+
+@app.post("/sign/swupdate")
+async def sign_handler_swupdate(req: request):
+    distro = req.form.get("distro")
+    if not distro:
+        return text("Distro name missing", status=400)
+    method = req.form.get("method")
+    if not method:
+        method = "RSA"
+    f = validate_upload(req, "sw-description")
+    if not f:
+        return text("Invalid sw-description", status=400)
+    try:
+        s = SwupdateSigner(distro)
+    except ValueError:
+        logger.info("could not init signer")
+        return text("Invalid parameters", status=400)
+    with tempfile.TemporaryDirectory() as workdir:
+        outfile = tempfile.NamedTemporaryFile(delete=False)
+        req.ctx = outfile.name
+        outfile.close()
+        with open(os.path.join(workdir, "sw-description"), "w") as infile:
+            infile.write(f.body.decode('UTF-8'))
+        if await asyncio.get_running_loop().run_in_executor(None, s.sign, workdir,
+                                                            method, "sw-description",
+                                                            outfile.name):
+            return await file_stream(outfile.name,
+                                     mime_type="application/octet-stream",
+                                     filename="sw-description.sig")
     return text("Signing error", status=500)
 
 
