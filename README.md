@@ -5,6 +5,7 @@ requests for:
 * NVIDIA Jetson bootloader signing
 * Kernel module signing
 * Mender artifact signing
+* Swupdate sw-description signing
 
 ## Prerequisites
 Requires Python 3.7 or later and a reasonably modern Linux distro to host
@@ -43,7 +44,7 @@ directory for the BSP.  For example (for R32.4.3, TX2/Xavier):
       /opt/nvidia/L4T-32.4.3-tegra186/Linux_for_Tegra/bootloader/tegra186-flash-helper
     $ sudo install -m 0755 tegra194-flash-helper.sh \
       /opt/nvidia/L4T-32.4.3-tegra186/Linux_for_Tegra/bootloader/tegra194-flash-helper
- 
+
 If you are supporting Jetson TX2 or Jetson AGX Xavier devices that use both PKC
 signing and SBK encryption of bootloader files, you will also need to apply at
 least this patch from meta-tegra:
@@ -65,7 +66,11 @@ For Mender artifact signing, you must have the `mender-artifact` tool available
 in the PATH.  Visit [the Mender documentation pages](https://docs.mender.io) and
 go to the "Downloads" section to find a download of a pre-built copy of this tool,
 or follow the instructions there for building it from source.  Installing it in
-`/usr/local/bin` should make it available. 
+`/usr/local/bin` should make it available.
+
+### Prerequisites: Swupdate signing
+For signing `sw-description` files for swupdate packages, `openssl` is required.
+RSA and CMS signing methods are supported.
 
 ## Installing
 Use `pip install` (or `pip3 install` in some cases, to ensure that you are using
