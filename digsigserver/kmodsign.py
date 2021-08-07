@@ -7,7 +7,8 @@ from sanic.log import logger
 
 
 class KernelModuleSigner:
-    def __init__(self, machine: str, hashalg: str):
+    def __init__(self, machine: str, hashalg: str, workdir: str):
+        self.workdir = workdir
         # noinspection PyUnresolvedReferences
         signcmd = os.path.join('/usr', 'src', 'linux-headers-{}'.format(os.uname().release),
                                'scripts', 'sign-file')
@@ -19,19 +20,19 @@ class KernelModuleSigner:
             raise ValueError('unrecognized hash algorithm: {}'.format(hashalg))
         self.hashalg = hashalg
 
-    def sign(self, workdir: str) -> bool:
+    def sign(self) -> bool:
         privkey = self.keys.get('kernel-signkey.priv')
         pubkey = self.keys.get('kernel-signkey.x509')
         if not privkey or not pubkey:
             raise RuntimeError('key missing for module signing')
 
-        for dirpath, _, filenames in os.walk(workdir):
+        for dirpath, _, filenames in os.walk(self.workdir):
             for file in filenames:
                 if file.endswith('.ko'):
                     cmd = [self.signcmd, self.hashalg, privkey, pubkey, os.path.join(dirpath, file)]
                     try:
                         logger.info("Running: {}".format(cmd))
-                        proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, cwd=workdir,
+                        proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, cwd=self.workdir,
                                               check=True, capture_output=True,
                                               encoding='utf-8')
                         logger.debug("stdout: {}".format(proc.stdout))

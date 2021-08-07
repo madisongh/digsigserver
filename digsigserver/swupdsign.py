@@ -6,14 +6,15 @@ from sanic.log import logger
 
 
 class SwupdateSigner:
-    def __init__(self, distro: str):
+    def __init__(self, distro: str, workdir: str):
         signcmd = shutil.which('openssl')
         if not signcmd:
             raise RuntimeError('no openssl command')
         self.signcmd = signcmd
+        self.workdir = workdir
         self.keys = KeyFiles('swupdate', distro)
 
-    def sign(self, workdir: str, method: str, sw_description: str, outfile: str) -> bool:
+    def sign(self, method: str, sw_description: str, outfile: str) -> bool:
         if method == "RSA":
             privkey = self.keys.get('rsa-private.key')
             if not privkey:
@@ -32,7 +33,7 @@ class SwupdateSigner:
 
         try:
             logger.info("Running: {}".format(cmd))
-            proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, cwd=workdir,
+            proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, cwd=self.workdir,
                                   check=True, capture_output=True,
                                   encoding='utf-8')
             logger.debug("stdout: {}".format(proc.stdout))
