@@ -8,10 +8,10 @@ from sanic import Sanic, request
 from sanic.log import logger
 from sanic.response import text, file_stream
 
-from .tegrasign import TegraSigner
-from .kmodsign import KernelModuleSigner
-from .mendersign import MenderSigner
-from .swupdsign import SwupdateSigner
+from digsigserver.signers.tegrasign import TegraSigner
+from digsigserver.signers.kmodsign import KernelModuleSigner
+from digsigserver.signers.mendersign import MenderSigner
+from digsigserver.signers.swupdsign import SwupdateSigner
 from . import utils
 
 # Signing can take a loooong time, so set a more reasonable
@@ -104,24 +104,31 @@ def parse_manifest(manifest_file: str) -> dict:
     return result
 
 
+async def return_tarball(req: request, workdir: str, return_filename: str = "signed-artifact.tar.gz"):
+    # Since file streaming happens asynchronously, the temp file we create here
+    # could (will) get deleted when closed in this function unless we use delete=False.
+    # We want the file to get removed after the response has been sent, so set req.ctx
+    # to the temp file's path name so our request handler wrapper deletes it after
+    # processing the response.
+    outfile = tempfile.NamedTemporaryFile(delete=False)
+    req.ctx = outfile.name
+    outfile.close()
+    if await asyncio.get_running_loop().run_in_executor(None, utils.repack_files,
+                                                        workdir, outfile.name):
+        return await file_stream(outfile.name,
+                                 mime_type="application/octet-stream",
+                                 filename=return_filename)
+    return text("Signing error", status=500)
+
+
 @app.post("/sign/tegra")
 async def sign_handler_tegra(req: request):
-    return await sign_handler_tegra_common(req, 1)
-
-
-@app.post("/sign/tegrav2")
-async def sign_handler_tegra_v2(req: request):
-    return await sign_handler_tegra_common(req, 2)
-
-
-async def sign_handler_tegra_common(req: request, version):
     f = validate_upload(req, "artifact")
     if not f:
         return text("Invalid artifact", status=400)
     with tempfile.TemporaryDirectory() as workdir:
         try:
-            s = TegraSigner(req.form.get("machine"), req.form.get("soctype"), req.form.get("bspversion"),
-                            version, workdir)
+            s = TegraSigner(workdir, req.form.get("machine"), req.form.get("soctype"), req.form.get("bspversion"))
         except ValueError:
             return text("Invalid parameters", status=400)
 
@@ -132,24 +139,12 @@ async def sign_handler_tegra_common(req: request, version):
                 return text("Invalid manifest", status=400)
             if 'BUPGENSPECS' in envvars:
                 result = await asyncio.get_running_loop().run_in_executor(None, s.multisign, envvars)
-            elif version > 1 and 'SIGNFILES' in envvars:
+            elif 'SIGNFILES' in envvars:
                 result = await asyncio.get_running_loop().run_in_executor(None, s.signfiles, envvars)
             else:
                 result = await asyncio.get_running_loop().run_in_executor(None, s.sign, envvars)
             if result:
-                # Since file streaming happens asynchronously, the temp file we create here
-                # could (will) get deleted when closed in this function unless we use delete=False.
-                # We want the file to get removed after the response has been sent, so set req.ctx
-                # to the temp file's path name so our request handler wrapper deletes it after
-                # processing the response.
-                outfile = tempfile.NamedTemporaryFile(delete=False)
-                req.ctx = outfile.name
-                outfile.close()
-                if await asyncio.get_running_loop().run_in_executor(None, utils.repack_files,
-                                                                    workdir, outfile.name):
-                    return await file_stream(outfile.name,
-                                             mime_type="application/octet-stream",
-                                             filename="signed-artifact.tar.gz")
+                return await return_tarball(req, workdir)
     return text("Signing error", status=500)
 
 
@@ -160,24 +155,14 @@ async def sign_handler_modules(req: request):
         return text("Invalid artifact", status=400)
     with tempfile.TemporaryDirectory() as workdir:
         try:
-            s = KernelModuleSigner(req.form.get("machine"), req.form.get("hashalg", "sha512"),
-                                   workdir)
+            s = KernelModuleSigner(workdir, req.form.get("machine"), req.form.get("hashalg", "sha512"))
         except ValueError:
             return text("Invalid parameters", status=400)
 
         if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, workdir, f):
             result = await asyncio.get_running_loop().run_in_executor(None, s.sign)
             if result:
-                # See the sign_handler_tegra function for an explanation of what's going on
-                # with temp file handling here.
-                outfile = tempfile.NamedTemporaryFile(delete=False)
-                req.ctx = outfile.name
-                outfile.close()
-                if await asyncio.get_running_loop().run_in_executor(None, utils.repack_files,
-                                                                    workdir, outfile.name):
-                    return await file_stream(outfile.name,
-                                             mime_type="application/octet-stream",
-                                             filename="signed-artifact.tar.gz")
+                return await return_tarball(req, workdir)
     return text("Signing error", status=500)
 
 
@@ -194,7 +179,7 @@ async def sign_handler_swupdate(req: request):
         return text("Invalid sw-description", status=400)
     with tempfile.TemporaryDirectory() as workdir:
         try:
-            s = SwupdateSigner(distro, workdir)
+            s = SwupdateSigner(workdir, distro)
         except ValueError:
             logger.info("could not init signer")
             return text("Invalid parameters", status=400)
@@ -222,7 +207,7 @@ async def sign_handler_mender(req: request):
         return text("Distro name missing", status=400)
     with tempfile.TemporaryDirectory() as workdir:
         try:
-            s = MenderSigner(distro, artifact, workdir)
+            s = MenderSigner(workdir, distro, artifact)
         except ValueError:
             return text("Invalid parameters", status=400)
         if await asyncio.get_running_loop().run_in_executor(None, s.sign):
