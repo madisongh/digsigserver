@@ -6,26 +6,6 @@ from sanic import request
 from sanic.log import logger
 
 
-def remove_file(workdir: str, name: str, check: bool = False):
-    if os.path.isabs(name):
-        raise ValueError("{}: absolute path not allowed".format(name))
-    path = os.path.join(workdir, name)
-    if os.path.isdir(path):
-        shutil.rmtree(path, ignore_errors=not check)
-    else:
-        try:
-            os.unlink(path)
-        except FileNotFoundError:
-            if check:
-                raise
-            pass
-
-
-def remove_files(workdir: str, paths: list, check: bool = False):
-    for path in paths:
-        remove_file(workdir, path, check)
-
-
 def extract_files(workdir: str, f: request.File) -> bool:
     try:
         subprocess.run(['tar', '-x', '-z', '-f-'],
@@ -39,7 +19,7 @@ def extract_files(workdir: str, f: request.File) -> bool:
 
 def repack_files(workdir: str, outfile: str) -> bool:
     try:
-        subprocess.run(['tar', '-c', '-z', '-f', outfile, '.'],
+        subprocess.run(['tar', '-c', '-z', '-v', '-f', outfile, '.'],
                        stdin=subprocess.DEVNULL, check=True,
                        capture_output=True, cwd=workdir)
     except subprocess.CalledProcessError as e:

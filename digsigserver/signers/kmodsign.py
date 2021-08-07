@@ -1,24 +1,22 @@
 import os
 import re
-import subprocess
-from .keyfiles import KeyFiles
-
-from sanic.log import logger
+from digsigserver.signers import Signer
 
 
-class KernelModuleSigner:
-    def __init__(self, machine: str, hashalg: str, workdir: str):
-        self.workdir = workdir
-        # noinspection PyUnresolvedReferences
+class KernelModuleSigner(Signer):
+
+    keytag = 'kmodsign'
+
+    def __init__(self, workdir: str, machine: str, hashalg: str):
         signcmd = os.path.join('/usr', 'src', 'linux-headers-{}'.format(os.uname().release),
                                'scripts', 'sign-file')
         if not os.path.exists(signcmd):
             raise RuntimeError('cannot find {} for module signing'.format(signcmd))
         self.signcmd = signcmd
-        self.keys = KeyFiles('kmodsign', machine)
         if not re.match(r'sha(256|384|512)$', hashalg):
             raise ValueError('unrecognized hash algorithm: {}'.format(hashalg))
         self.hashalg = hashalg
+        super().__init__(workdir, machine)
 
     def sign(self) -> bool:
         privkey = self.keys.get('kernel-signkey.priv')
@@ -30,16 +28,8 @@ class KernelModuleSigner:
             for file in filenames:
                 if file.endswith('.ko'):
                     cmd = [self.signcmd, self.hashalg, privkey, pubkey, os.path.join(dirpath, file)]
-                    try:
-                        logger.info("Running: {}".format(cmd))
-                        proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, cwd=self.workdir,
-                                              check=True, capture_output=True,
-                                              encoding='utf-8')
-                        logger.debug("stdout: {}".format(proc.stdout))
-                        logger.debug("stderr: {}".format(proc.stderr))
-                    except subprocess.CalledProcessError as e:
+                    if not self.run_command(cmd, cleanup=False):
                         self.keys.cleanup()
-                        logger.warning("signing error: {}".format(e.stderr))
                         return False
         self.keys.cleanup()
         return True
