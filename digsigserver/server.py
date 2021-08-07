@@ -115,26 +115,27 @@ async def sign_handler_tegra_v2(req: request):
 
 
 async def sign_handler_tegra_common(req: request, version):
-    try:
-        s = TegraSigner(req.form.get("machine"), req.form.get("soctype"), req.form.get("bspversion"), version)
-    except ValueError:
-        return text("Invalid parameters", status=400)
-
     f = validate_upload(req, "artifact")
     if not f:
         return text("Invalid artifact", status=400)
     with tempfile.TemporaryDirectory() as workdir:
+        try:
+            s = TegraSigner(req.form.get("machine"), req.form.get("soctype"), req.form.get("bspversion"),
+                            version, workdir)
+        except ValueError:
+            return text("Invalid parameters", status=400)
+
         if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, workdir, f):
             try:
                 envvars = parse_manifest(os.path.join(workdir, 'MANIFEST'))
             except ValueError:
                 return text("Invalid manifest", status=400)
             if 'BUPGENSPECS' in envvars:
-                result = await asyncio.get_running_loop().run_in_executor(None, s.multisign, envvars, workdir)
+                result = await asyncio.get_running_loop().run_in_executor(None, s.multisign, envvars)
             elif version > 1 and 'SIGNFILES' in envvars:
-                result = await asyncio.get_running_loop().run_in_executor(None, s.signfiles, envvars, workdir)
+                result = await asyncio.get_running_loop().run_in_executor(None, s.signfiles, envvars)
             else:
-                result = await asyncio.get_running_loop().run_in_executor(None, s.sign, envvars, workdir)
+                result = await asyncio.get_running_loop().run_in_executor(None, s.sign, envvars)
             if result:
                 # Since file streaming happens asynchronously, the temp file we create here
                 # could (will) get deleted when closed in this function unless we use delete=False.
@@ -154,17 +155,18 @@ async def sign_handler_tegra_common(req: request, version):
 
 @app.post("/sign/modules")
 async def sign_handler_modules(req: request):
-    try:
-        s = KernelModuleSigner(req.form.get("machine"), req.form.get("hashalg", "sha512"))
-    except ValueError:
-        return text("Invalid parameters", status=400)
-
     f = validate_upload(req, "artifact")
     if not f:
         return text("Invalid artifact", status=400)
     with tempfile.TemporaryDirectory() as workdir:
+        try:
+            s = KernelModuleSigner(req.form.get("machine"), req.form.get("hashalg", "sha512"),
+                                   workdir)
+        except ValueError:
+            return text("Invalid parameters", status=400)
+
         if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, workdir, f):
-            result = await asyncio.get_running_loop().run_in_executor(None, s.sign, workdir)
+            result = await asyncio.get_running_loop().run_in_executor(None, s.sign)
             if result:
                 # See the sign_handler_tegra function for an explanation of what's going on
                 # with temp file handling here.
@@ -190,18 +192,18 @@ async def sign_handler_swupdate(req: request):
     f = validate_upload(req, "sw-description")
     if not f:
         return text("Invalid sw-description", status=400)
-    try:
-        s = SwupdateSigner(distro)
-    except ValueError:
-        logger.info("could not init signer")
-        return text("Invalid parameters", status=400)
     with tempfile.TemporaryDirectory() as workdir:
+        try:
+            s = SwupdateSigner(distro, workdir)
+        except ValueError:
+            logger.info("could not init signer")
+            return text("Invalid parameters", status=400)
         outfile = tempfile.NamedTemporaryFile(delete=False)
         req.ctx = outfile.name
         outfile.close()
         with open(os.path.join(workdir, "sw-description"), "w") as infile:
             infile.write(f.body.decode('UTF-8'))
-        if await asyncio.get_running_loop().run_in_executor(None, s.sign, workdir,
+        if await asyncio.get_running_loop().run_in_executor(None, s.sign,
                                                             method, "sw-description",
                                                             outfile.name):
             return await file_stream(outfile.name,
@@ -218,12 +220,11 @@ async def sign_handler_mender(req: request):
     distro = req.form.get('distro')
     if not distro:
         return text("Distro name missing", status=400)
-    try:
-        s = MenderSigner(distro, artifact)
-    except ValueError:
-        return text("Invalid parameters", status=400)
-
     with tempfile.TemporaryDirectory() as workdir:
-        if await asyncio.get_running_loop().run_in_executor(None, s.sign, workdir):
+        try:
+            s = MenderSigner(distro, artifact, workdir)
+        except ValueError:
+            return text("Invalid parameters", status=400)
+        if await asyncio.get_running_loop().run_in_executor(None, s.sign):
             return text("Signing successful")
     return text("Signing error", status=500)

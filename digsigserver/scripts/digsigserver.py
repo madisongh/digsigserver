@@ -16,6 +16,7 @@ def main():
 
 
 if __name__ == '__main__':
+    # noinspection PyBroadException
     try:
         main()
         sys.exit(0)

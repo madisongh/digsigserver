@@ -6,7 +6,10 @@ from sanic import request
 from sanic.log import logger
 
 
-def remove_file(path: str, check=False):
+def remove_file(workdir: str, name: str, check: bool = False):
+    if os.path.isabs(name):
+        raise ValueError("{}: absolute path not allowed".format(name))
+    path = os.path.join(workdir, name)
     if os.path.isdir(path):
         shutil.rmtree(path, ignore_errors=not check)
     else:
@@ -18,9 +21,9 @@ def remove_file(path: str, check=False):
             pass
 
 
-def remove_files(paths, check=False):
+def remove_files(workdir: str, paths: list, check: bool = False):
     for path in paths:
-        remove_file(path, check)
+        remove_file(workdir, path, check)
 
 
 def extract_files(workdir: str, f: request.File) -> bool:
