@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='digsigserver',
-    version='0.5.99',
+    version='0.6.0',
     packages=find_packages(),
     license='MIT',
     author='Matt Madison',
