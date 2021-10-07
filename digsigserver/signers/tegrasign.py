@@ -41,8 +41,15 @@ class TegraSigner (Signer):
         if self.toolspath is None:
             raise ValueError("no tools available for soctype={} bspversion={}".format(soctype, bspversion))
         bspmajor, bspminor = tuple([int(v) for v in bspversion.split('.')[0:2]])
-        self.tegrasign_v3 = soctype != 'tegra210' and (bspmajor > 32 or (bspmajor == 32 and bspminor >= 5))
-        self.encrypted_kernel = self.tegrasign_v3 and soctype == 'tegra194'
+        if soctype == 'tegra210':
+            self.tegrasign_v3 = False
+            self.encrypted_kernel = False
+        else:
+            self.tegrasign_v3 = (bspmajor > 32 or (bspmajor == 32 and bspminor >= 5))
+            if soctype == 'tegra194':
+                self.encrypted_kernel = True
+            else:
+                self.encrypted_kernel = (bspmajor > 32 or (bspmajor == 32 and bspminor >= 6))
         self.scripts = copy.copy(self.signing_scripts)
         self.scripts.append(os.path.join('bootloader', '{}-flash-helper'.format(soctype)))
         if soctype == 'tegra210':
