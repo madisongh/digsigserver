@@ -27,17 +27,18 @@ CodesignSanicDefaults = {
 If a temporary file is being streamed back in response,
 we need a way to remove that file once the response is
 complete.  Sanic provides no built-in way to do this,
-so borrow the following wrapping technique from the
-Sanic Plugins Framework project to wrap the normal
-request handler function.
+so we patch in a wrapper for the handle_request method
+in the Sanic class that adds some logic to do this after
+the request has been processed.
 """
 
 
-async def my_handle_request(real_handler, req, write_cb, stream_cb):
+async def my_handle_request(self, req):
     """
     Wraps the normal handle_request function so we can check
     if a filename has been set at req.ctx; if so, that's a
     temporary file that needs to be deleted when we're done.
+    :param self: app object
     :param real_handler: normal handle_request function
     :param req: request object
     :param write_cb: write callback
@@ -45,31 +46,22 @@ async def my_handle_request(real_handler, req, write_cb, stream_cb):
     :return:
     """
     cancelled = False
-    req.ctx = None
+    req.ctx.file_to_delete = None
     try:
-        _ = await real_handler(req, write_cb, stream_cb)
+        _ = await self.orig_handle_request(req)
     except asyncio.CancelledError as ce:
         cancelled = ce
     except BaseException:
         raise
     finally:
-        if req.ctx:
-            os.unlink(req.ctx)
-            logger.info("Removed {}".format(req.ctx))
+        if req.ctx.file_to_delete:
+            os.unlink(req.ctx.file_to_delete)
+            logger.info("Removed {}".format(req.ctx.file_to_delete))
         if cancelled:
             raise cancelled
 
-
-def wrap_handle_request(app_):
-    """
-    Uses functools to wrap the handle_request method
-    in the app object.
-    :param app_: Sanic app
-    :return: callable
-    """
-    orig_handle_request = app_.handle_request
-    return update_wrapper(partial(my_handle_request, orig_handle_request), my_handle_request)
-
+Sanic.orig_handle_request = Sanic.handle_request
+Sanic.handle_request = my_handle_request
 
 """
 Actual initialization happens here
@@ -78,7 +70,6 @@ app = Sanic(name='digsigserver', load_env=False)
 app.config.update_config(CodesignSanicDefaults)
 app.config.load_environment_vars(prefix='DIGSIGSERVER_')
 logger.setLevel(app.config.get("LOG_LEVEL"))
-app.ctx.handle_request = wrap_handle_request(app)
 
 
 def config_get(item: str, default_value=None) -> str:
@@ -111,10 +102,9 @@ async def return_tarball(req: request, workdir: str, return_filename: str = "sig
     # to the temp file's path name so our request handler wrapper deletes it after
     # processing the response.
     outfile = tempfile.NamedTemporaryFile(delete=False)
-    req.ctx = outfile.name
+    req.ctx.file_to_delete = outfile.name
     outfile.close()
-    if await asyncio.get_running_loop().run_in_executor(None, utils.repack_files,
-                                                        workdir, outfile.name):
+    if utils.repack_files(workdir, outfile.name):
         return await file_stream(outfile.name,
                                  mime_type="application/octet-stream",
                                  filename=return_filename)
@@ -184,7 +174,7 @@ async def sign_handler_swupdate(req: request):
             logger.info("could not init signer")
             return text("Invalid parameters", status=400)
         outfile = tempfile.NamedTemporaryFile(delete=False)
-        req.ctx = outfile.name
+        req.ctx.file_to_delete = outfile.name
         outfile.close()
         with open(os.path.join(workdir, "sw-description"), "w") as infile:
             infile.write(f.body.decode('UTF-8'))
