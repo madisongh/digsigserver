@@ -2,11 +2,10 @@ import asyncio
 import tempfile
 import re
 import os
-from functools import partial, update_wrapper
 
 from sanic import Sanic, request
 from sanic.log import logger
-from sanic.response import text, file_stream
+from sanic.response import text
 
 from digsigserver.signers.tegrasign import TegraSigner
 from digsigserver.signers.kmodsign import KernelModuleSigner
@@ -23,45 +22,6 @@ CodesignSanicDefaults = {
     'LOG_LEVEL': 'INFO'
 }
 
-"""
-If a temporary file is being streamed back in response,
-we need a way to remove that file once the response is
-complete.  Sanic provides no built-in way to do this,
-so we patch in a wrapper for the handle_request method
-in the Sanic class that adds some logic to do this after
-the request has been processed.
-"""
-
-
-async def my_handle_request(self, req):
-    """
-    Wraps the normal handle_request function so we can check
-    if a filename has been set at req.ctx; if so, that's a
-    temporary file that needs to be deleted when we're done.
-    :param self: app object
-    :param real_handler: normal handle_request function
-    :param req: request object
-    :param write_cb: write callback
-    :param stream_cb: stream callback
-    :return:
-    """
-    cancelled = False
-    req.ctx.file_to_delete = None
-    try:
-        _ = await self.orig_handle_request(req)
-    except asyncio.CancelledError as ce:
-        cancelled = ce
-    except BaseException:
-        raise
-    finally:
-        if req.ctx.file_to_delete:
-            os.unlink(req.ctx.file_to_delete)
-            logger.info("Removed {}".format(req.ctx.file_to_delete))
-        if cancelled:
-            raise cancelled
-
-Sanic.orig_handle_request = Sanic.handle_request
-Sanic.handle_request = my_handle_request
 
 """
 Actual initialization happens here
@@ -95,20 +55,28 @@ def parse_manifest(manifest_file: str) -> dict:
     return result
 
 
+async def return_file(req: request, filename: str, return_filename: str):
+    response = await req.respond(content_type="application/octet-stream",
+                                 headers={"Content-Disposition": f'Attachment; filename="{return_filename}"'})
+    with open(filename, "rb") as f:
+        while True:
+            data = f.read(8192)
+            if not data:
+                break
+            await response.send(data, False)
+        await response.send("", True)
+    return response
+
+
 async def return_tarball(req: request, workdir: str, return_filename: str = "signed-artifact.tar.gz"):
-    # Since file streaming happens asynchronously, the temp file we create here
-    # could (will) get deleted when closed in this function unless we use delete=False.
-    # We want the file to get removed after the response has been sent, so set req.ctx
-    # to the temp file's path name so our request handler wrapper deletes it after
-    # processing the response.
     outfile = tempfile.NamedTemporaryFile(delete=False)
-    req.ctx.file_to_delete = outfile.name
     outfile.close()
     if utils.repack_files(workdir, outfile.name):
-        return await file_stream(outfile.name,
-                                 mime_type="application/octet-stream",
-                                 filename=return_filename)
-    return text("Signing error", status=500)
+        response = await return_file(req, outfile.name, return_filename)
+    else:
+        response = text("Signing error", status=500)
+    os.unlink(outfile.name)
+    return response
 
 
 @app.post("/sign/tegra")
@@ -174,17 +142,17 @@ async def sign_handler_swupdate(req: request):
             logger.info("could not init signer")
             return text("Invalid parameters", status=400)
         outfile = tempfile.NamedTemporaryFile(delete=False)
-        req.ctx.file_to_delete = outfile.name
         outfile.close()
         with open(os.path.join(workdir, "sw-description"), "w") as infile:
             infile.write(f.body.decode('UTF-8'))
         if await asyncio.get_running_loop().run_in_executor(None, s.sign,
                                                             method, "sw-description",
                                                             outfile.name):
-            return await file_stream(outfile.name,
-                                     mime_type="application/octet-stream",
-                                     filename="sw-description.sig")
-    return text("Signing error", status=500)
+            response = await return_file(req, outfile.name, "sw-description.sig")
+        else:
+            response = text("Signing error", status=500)
+    os.unlink(outfile.name)
+    return response
 
 
 @app.post("/sign/mender")
