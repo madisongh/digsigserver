@@ -16,7 +16,7 @@ from . import utils
 # Signing can take a loooong time, so set a more reasonable
 # default response timeout
 CodesignSanicDefaults = {
-    'RESPONSE_TIMEOUT': 180,
+    'RESPONSE_TIMEOUT': 600,
     'L4T_TOOLS_BASE': '/opt/nvidia',
     'KEYFILE_URI': 'file:///please/configure/this/path',
     'LOG_LEVEL': 'INFO'
