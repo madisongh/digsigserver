@@ -90,6 +90,15 @@ have been installed.  Defaults to `/opt/nvidia`.
 
 Other settings for configuring the underlying Sanic framework can also be provided.
 
+### Timeouts
+
+Some signing operations (particularly for bootloader update payloads and Mender
+artifacts) can take several minutes to complete, so the server configuration
+sets a default `RESPONSE_TIMEOUT` of five minutes. You may need to increase this
+setting, depending on your server hardware and expected service load. You should
+also configure  client-side timeouts and retries to guard against signing failures
+caused by  service timeouts under load.
+
 ## Running
 Once installed, use the `digsigserver` command to start the server:
 
