@@ -138,6 +138,20 @@ For Mender artifacts, the signing key is expected to be at
 
 where `${distro}` is the value of the `distro=` parameter included in the signing request.
 
+### SWUpdate sw-description signing
+For SWUpdate, the signing key is expected to be at
+
+for RSA:
+
+    ${DIGSIGSERVER_KEYFILE_URI}/${distro}/swupdate/rsa-private.key
+
+For CMS:
+
+    ${DIGSIGSERVER_KEYFILE_URI}/${distro}/swupdate/cms.cert
+    ${DIGSIGSERVER_KEYFILE_URI}/${distro}/swupdate/cms-private.key
+
+where `${distro}` is the value of the `distro=` parameter included in the signing request.
+
 ## REST API endpoints
 `digsigserver` exposes the following API endpoints:
 
@@ -194,6 +208,19 @@ the signed copy back to the same location.
 Response: no body, just a status code
 
 Example client: [mendersign.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/mendersign.bbclass)
+
+### SWUpdate sw-description signing
+
+Request type: `POST`
+
+Endpoint: `/sign/swupdate`
+
+Expected parameters:
+* `distro=<distro>` - a name for the "distro", used to locate the signing keys
+
+Response: no body, just a status code
+
+Example client: [swupdatesign.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/swupdatesign.bbclass)
  
 ## Securing signing keys
 Signing keys should obviously be kept as secure as possible, but the specifics of doing
