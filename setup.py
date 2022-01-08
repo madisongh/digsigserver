@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='digsigserver',
-    version='0.7.0',
+    version='0.7.1',
     packages=find_packages(),
     license='MIT',
     author='Matt Madison',
@@ -12,5 +12,5 @@ setup(
             'digsigserver = digsigserver.scripts.digsigserver:main',
         ]
     },
-    install_requires=['sanic>=21.3']
+    install_requires=['sanic>=21.6']
 )
