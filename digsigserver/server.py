@@ -26,7 +26,7 @@ CodesignSanicDefaults = {
 """
 Actual initialization happens here
 """
-app = Sanic(name='digsigserver', load_env=False)
+app = Sanic(name='digsigserver', env_prefix='DIGSIGSERVER_')
 app.config.update_config(CodesignSanicDefaults)
 app.config.load_environment_vars(prefix='DIGSIGSERVER_')
 logger.setLevel(app.config.get("LOG_LEVEL"))
