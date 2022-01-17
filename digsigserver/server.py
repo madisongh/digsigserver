@@ -64,15 +64,15 @@ async def return_file(req: request, filename: str, return_filename: str):
             if not data:
                 break
             await response.send(data, False)
-        await response.send("", True)
-    return response
+    await response.eof()
 
 
 async def return_tarball(req: request, workdir: str, return_filename: str = "signed-artifact.tar.gz"):
     outfile = tempfile.NamedTemporaryFile(delete=False)
     outfile.close()
     if utils.repack_files(workdir, outfile.name):
-        response = await return_file(req, outfile.name, return_filename)
+        await return_file(req, outfile.name, return_filename)
+        response = None
     else:
         response = text("Signing error", status=500)
     os.unlink(outfile.name)
@@ -148,7 +148,8 @@ async def sign_handler_swupdate(req: request):
         if await asyncio.get_running_loop().run_in_executor(None, s.sign,
                                                             method, "sw-description",
                                                             outfile.name):
-            response = await return_file(req, outfile.name, "sw-description.sig")
+            await return_file(req, outfile.name, "sw-description.sig")
+            response = None
         else:
             response = text("Signing error", status=500)
     os.unlink(outfile.name)
