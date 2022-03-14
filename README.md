@@ -25,8 +25,8 @@ by the server.  For example, for L4T R32.4.3 for Jetson TX2/Xavier, you would en
 
 You can use a different top-level path than `/opt/nvidia` by setting the environment
 variable DIGSIGSERVER_L4T_TOOLS_BASE. The top-level directory under that base path
-must, however, always be `L4T-<version>-<tegraXXX>`, where <version> is the BSP
-version (without the "R" prefix) and <tegraXXX> is either `tegra186` for TX2/AGX or
+must, however, always be `L4T-<version>-<tegraXXX>`, where `version` is the BSP
+version (without the "R" prefix) and `tegraXXX` is either `tegra186` for TX2/Xavier or
 `tegra210` for TX1/Nano. The server supports having multiple versions of the BSP
 installed.
 
@@ -217,8 +217,9 @@ Endpoint: `/sign/swupdate`
 
 Expected parameters:
 * `distro=<distro>` - a name for the "distro", used to locate the signing keys
+* `sw-description=<body>` - the contents of the `sw-description` file to have signatures included
 
-Response: no body, just a status code
+Response: a `sw-description` file with signatures inserted
 
 Example client: [swupdatesign.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/swupdatesign.bbclass)
  
