@@ -6,6 +6,7 @@ requests for:
 * Kernel module signing
 * Mender artifact signing
 * Swupdate sw-description signing
+* NXP i.MX SoC family bootloader signing
 
 ## Prerequisites
 Requires Python 3.7 or later and a reasonably modern Linux distro to host
@@ -56,6 +57,18 @@ least this patch from meta-tegra:
 Check the `tegraXXX-flashtools-native` recipes in meta-tegra to see if
 other patches might also be needed.
 
+### Prerequisites: NXP i.MX bootloader signing
+For signing i.MX bootloader/kernel images, you must obtain the NXP code signing tool (CST)
+from the [NXP web site](https://www.nxp.com), and unpack them under `/opt/NXP`. For example,
+using version 3.3.1 of CST:
+
+    $ sudo mkdir -p /opt/NXP
+	$ sudo tar -C /opt/NXP -x -f cst-3.3.1.tgz
+
+You can use a different top-level path than `/opt/NXP` by settin gthe environment
+variable DIGSIGSERVER_IMX_CST_BASE. Multiple versions of CST are supported; the client
+includes the needed version in its request.
+
 ### Prerequisites: Kernel module signing
 For kernel module signing, your Linux distribution must have the `sign-file` tool
 at `/usr/src/linux-headers-$(uname -r)/scripts/sign-file`, and that version of the
@@ -87,6 +100,9 @@ supported.
 
 **DIGSIGSERVER_L4T_TOOLS_BASE**: path to the directory under which the L4T BSP package(s)
 have been installed.  Defaults to `/opt/nvidia`.
+
+**DIGSIGSERVER_IMX_CST_BASE**: path to the directory under which the NXP CST tools
+have been installed.  Defaults to `/opt/NXP`.
 
 Other settings for configuring the underlying Sanic framework can also be provided.
 
@@ -121,6 +137,35 @@ where `${machine}` is the value of the `machine=` parameter included in the sign
 The `rsa_priv.pem` file is the PKC private key for signing. It **must** be present.
 The `sbk.txt` file is the SBK encryption key.  It is optional, and only need be included
 if your device has had an SBK burned into its secure boot fuses.
+
+### i.MX bootloader signing
+For i.MX signing, the necessary keys and certificates are expected to be present in
+a tarball named `imx-cst-keys.tar.gz`:
+
+    ${DIGSIGSERVER_KEYFILE_URI}/${machine}/imxsign/imx-cst-keys.tar.gz
+
+where `${machine}` is the value of the `machine=` parameter included in the signing request.
+The tarball is expected to include the private keys, certificates, and SRK table file used by
+the `cst` tool to perform the signing. If you use the default PKI generation scripts that
+NXP provides in the CST package, this would likely include:
+
+    keys/IMG*.pem
+	keys/CSF*.pem
+	keys/key_pass.txt
+	crts/IMG*.pem
+	crts/CSF*.pem
+	crts/SRK*table.bin
+
+although the actual contents could vary depending on the number of keys/certs you decided
+to create. The tarball is extracted to the server's temporary working directory during
+signing.  The certificate path names must match exactly those included in the CSF description
+file sent by the client, so using relative path names (or using a flat directory structure,
+if desired) is recommended. Note that the `cst` tool itself assumes that the private key
+assoicated with a certificate either resides in the same directory as the certificate (with
+the filename stem ending with `key` instead of `crt`), or, if the certificate has `crts`
+in the path, a parallel directory called `keys` (along with the `crt` -> `key` remapping
+in the filename).
+
 
 ### Kernel module signing
 For kernel module signing, the private and public keys for signing the kernel modules 
@@ -173,6 +218,26 @@ information about the hardware and contents of the tarball.
 Response: gzip-compressed tarball containing the signed binaries
 
 Example client: [tegrasign.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/tegrasign.bbclass)
+
+### i.MX bootloader signing
+
+Request type: `POST`
+
+Endpoint: `/sign/imx`
+
+Expected parameters:
+* `machine=<machine-name>` - a name for the device, used to locate the signing keys
+* `soctype=<soctype>` - currently only `mx8m` recognized (but not currently used)
+* `cstversion=<cst-version>` - the version of CST (e.g., `3.3.1`)
+* `csf=<body>` - plain/text CSF description file
+* `artifact=<body>` - binary associated with the CSF description file
+
+Response: binary CSF blob containing the signing commands, signature hashes, and certificates
+
+The client is responsible for inserting/appending the CSF blob (and an IVT) at the
+correct location in the binary for use on the target device.
+
+Example client: TBD
 
 ### Kernel module signing
 
