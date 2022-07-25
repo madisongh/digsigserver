@@ -1,5 +1,6 @@
 import asyncio
 import tempfile
+from typing import Optional
 import re
 import os
 
@@ -8,6 +9,7 @@ from sanic.log import logger
 from sanic.response import text
 
 from digsigserver.signers.tegrasign import TegraSigner
+from digsigserver.signers.imxsign import IMXSigner
 from digsigserver.signers.kmodsign import KernelModuleSigner
 from digsigserver.signers.mendersign import MenderSigner
 from digsigserver.signers.swupdsign import SwupdateSigner
@@ -18,8 +20,9 @@ from . import utils
 CodesignSanicDefaults = {
     'RESPONSE_TIMEOUT': 600,
     'L4T_TOOLS_BASE': '/opt/nvidia',
+    'IMX_CST_BASE': '/opt/NXP',
     'KEYFILE_URI': 'file:///please/configure/this/path',
-    'LOG_LEVEL': 'INFO'
+    'LOG_LEVEL': 'DEBUG'
 }
 
 
@@ -36,9 +39,11 @@ def config_get(item: str, default_value=None) -> str:
     return app.config.get(item, default_value)
 
 
-def validate_upload(req: request, name: str) -> request.File:
+def validate_upload(req: request, name: str, ok_types: Optional[list] = None) -> request.File:
+    if not ok_types:
+        ok_types = ["application/octet-stream"]
     f = req.files.get(name)
-    return f if f and f.type == "application/octet-stream" else None
+    return f if f and f.type in ok_types else None
 
 
 def parse_manifest(manifest_file: str) -> dict:
@@ -104,6 +109,36 @@ async def sign_handler_tegra(req: request):
             if result:
                 return await return_tarball(req, workdir)
     return text("Signing error", status=500)
+
+
+@app.post("/sign/imx")
+async def sign_handler_imx(req: request):
+    csf = validate_upload(req, "csf", ok_types=["text/plain"])
+    if not csf:
+        return text("Invalid CSF", status=400)
+    f = validate_upload(req, "artifact")
+    if not f:
+        return text("Invalid artifact", status=400)
+    with tempfile.TemporaryDirectory() as workdir:
+        try:
+            s = IMXSigner(workdir, req.form.get("machine"), req.form.get("soctype"), req.form.get("cstversion"))
+        except ValueError:
+            return text("Invalid parameters", status=400)
+
+        with open(os.path.join(workdir, "csf-input.txt"), "w") as csfinput:
+            csfinput.write(csf.body.decode('UTF-8'))
+        with open(os.path.join(workdir, "artifact"), "wb") as artifact:
+            artifact.write(f.body)
+
+        outfile = tempfile.NamedTemporaryFile(delete=False)
+        outfile.close()
+
+        if await asyncio.get_running_loop().run_in_executor(None, s.sign, outfile.name):
+            await return_file(req, outfile.name, "artifact.signed")
+            response = None
+        else:
+            response = text("Signing error", status=500)
+    return response
 
 
 @app.post("/sign/modules")
