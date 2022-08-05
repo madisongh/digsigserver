@@ -7,6 +7,7 @@ requests for:
 * Mender artifact signing
 * Swupdate sw-description signing
 * NXP i.MX SoC family bootloader signing
+* OPTEE trusted application signing
 
 ## Prerequisites
 Requires Python 3.7 or later and a reasonably modern Linux distro to host
@@ -176,6 +177,14 @@ are expected to be at:
 
 where `${machine}` is the value of the `machine=` parameter included in the signing request.
 
+### OP-TEE TA signing
+For signing OP-TEE trusted applications, the private key for signing TAs is expected
+to be at:
+
+    ${DIGSIGSERVER_KEYFILE_URI}/${machine}/opteesign/optee-signing-key.pem
+
+where `${machine}` is the value of the `machine=` parameter included in the signing request.
+
 ### Mender artifact signing
 For Mender artifacts, the signing key is expected to be at
 
@@ -251,6 +260,20 @@ Expected parameters:
 * `artifact=<body>` - gzip-compressed tarball containing the tree of modules to be signed
 
 Response: gzip-compressed tarball containing the same tree of modules, signed
+
+Example client: [kernel-module-signing.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/kernel-module-signing.bbclass)
+
+### OP-TEE TA signing
+
+Request type: `POST`
+
+Endpoint: `/sign/optee`
+
+Expected parameters:
+* `machine=<machine>` - a name for the device, used to locate the signing keys
+* `artifact=<body>` - gzip-compressed tarball containing a tree of `<uuid>.stripped-elf` and `<uuid>.ta-version` files
+
+Response: gzip-compressed tarball containing the signed `<uuid>.ta` files
 
 Example client: [kernel-module-signing.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/kernel-module-signing.bbclass)
 
