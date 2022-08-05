@@ -44,5 +44,7 @@ class IMXSigner (Signer):
             env = self._prepare_path()
             # Generate the binary CSF with signatures
             if self.run_command(['cst', '-i', 'csf-input.txt', '-o', outfile], env=env):
+                self.keys.cleanup()
                 return True
+        self.keys.cleanup()
         return False

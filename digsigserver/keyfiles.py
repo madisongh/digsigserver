@@ -6,7 +6,7 @@ from . import utils
 
 
 class KeyFiles:
-    signing_types = ['tegrasign', 'imxsign', 'kmodsign', 'mender', 'swupdate']
+    signing_types = ['tegrasign', 'imxsign', 'kmodsign', 'mender', 'swupdate', 'opteesign']
 
     def __init__(self, signtype: str, machine_or_distro: str):
         if signtype not in self.signing_types:

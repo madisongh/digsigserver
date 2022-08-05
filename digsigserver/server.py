@@ -11,6 +11,7 @@ from sanic.response import text
 from digsigserver.signers.tegrasign import TegraSigner
 from digsigserver.signers.imxsign import IMXSigner
 from digsigserver.signers.kmodsign import KernelModuleSigner
+from digsigserver.signers.opteesign import OPTEESigner
 from digsigserver.signers.mendersign import MenderSigner
 from digsigserver.signers.swupdsign import SwupdateSigner
 from . import utils
@@ -149,6 +150,24 @@ async def sign_handler_modules(req: request):
     with tempfile.TemporaryDirectory() as workdir:
         try:
             s = KernelModuleSigner(workdir, req.form.get("machine"), req.form.get("hashalg", "sha512"))
+        except ValueError:
+            return text("Invalid parameters", status=400)
+
+        if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, workdir, f):
+            result = await asyncio.get_running_loop().run_in_executor(None, s.sign)
+            if result:
+                return await return_tarball(req, workdir)
+    return text("Signing error", status=500)
+
+
+@app.post("/sign/optee")
+async def sign_handler_modules(req: request):
+    f = validate_upload(req, "artifact")
+    if not f:
+        return text("Invalid artifact", status=400)
+    with tempfile.TemporaryDirectory() as workdir:
+        try:
+            s = OPTEESigner(workdir, req.form.get("machine"))
         except ValueError:
             return text("Invalid parameters", status=400)
 
