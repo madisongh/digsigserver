@@ -128,6 +128,7 @@ class TegraSigner (Signer):
     def _prepare_cmd(self, env: dict, to_remove: Optional[list]) -> list:
         pkc = self.keys.get('rsa_priv.pem')
         sbk = None
+        user_key = None
         # XXX
         # The tegra210-flash-helper script prior to L4T R32.6
         # integration erroneously put the full path name in
@@ -149,10 +150,17 @@ class TegraSigner (Signer):
                 sbk = self.keys.get('sbk.txt')
             except FileNotFoundError:
                 sbk = None
+            try:
+                user_key = self.keys.get('user_key.txt')
+            except FileNotFoundError:
+                user_key = None
+
         cmd = ["{}{}-flash-helper".format(path_workaround, self.soctype),
                '--bup' if 'BUPGENSPECS' in env else '--no-flash', '-u', pkc]
         if sbk:
             cmd += ['-v', sbk]
+        if user_key:
+            cmd += ['--user_key', user_key]
         cfg_args = '{0}.cfg,{0}-override.cfg' if self.soctype == 'tegra194' else '{0}.cfg'
         cmd += ['flash.xml.in', env['DTBFILE'], cfg_args.format(self.machine), env['ODMDATA']]
 
