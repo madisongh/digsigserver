@@ -9,9 +9,15 @@ from sanic.log import logger
 
 
 def bsp_tools_path(soctype: str, bspversion: str) -> str:
-    suffix = 'tegra186' if soctype == 'tegra194' else soctype
+    suffix = ""
+    majver = bspversion.split(".")[0]
+    try:
+        if majver and int(majver) < 34:
+            suffix = '-tegra186' if soctype == 'tegra194' else "-" + soctype
+    except ValueError:
+        pass
     toolspath = os.path.join(server.config_get('L4T_TOOLS_BASE'),
-                             'L4T-{}-{}'.format(bspversion, suffix),
+                             'L4T-{}{}'.format(bspversion, suffix),
                              'Linux_for_Tegra')
     return toolspath if os.path.exists(toolspath) else None
 
