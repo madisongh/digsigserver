@@ -161,7 +161,7 @@ async def sign_handler_modules(req: request):
 
 
 @app.post("/sign/optee")
-async def sign_handler_modules(req: request):
+async def sign_handler_optee(req: request):
     f = validate_upload(req, "artifact")
     if not f:
         return text("Invalid artifact", status=400)
