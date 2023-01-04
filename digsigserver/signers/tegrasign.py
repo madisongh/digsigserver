@@ -8,14 +8,10 @@ from digsigserver import server
 from sanic.log import logger
 
 
-def bsp_tools_path(soctype: str, bspversion: str) -> str:
+def bsp_tools_path(soctype: str, bspversion: str, bspmajor: int) -> str:
     suffix = ""
-    majver = bspversion.split(".")[0]
-    try:
-        if majver and int(majver) < 34:
-            suffix = '-tegra186' if soctype == 'tegra194' else "-" + soctype
-    except ValueError:
-        pass
+    if bspmajor < 34:
+        suffix = '-tegra186' if soctype == 'tegra194' else "-" + soctype
     toolspath = os.path.join(server.config_get('L4T_TOOLS_BASE'),
                              'L4T-{}{}'.format(bspversion, suffix),
                              'Linux_for_Tegra')
@@ -39,11 +35,20 @@ class TegraSigner (Signer):
                             os.path.join('bootloader', 'tegrasign_v3_internal.py'),
                             os.path.join('bootloader', 'tegrasign_v3_util.py')]
 
+    r35_and_later = [os.path.join('bootloader', 'dtbcheck.py'),
+                     os.path.join('bootloader', 'tegraflash_impl_t234.py'),
+                     os.path.join('bootloader', 't194.py'),
+                     os.path.join('bootloader', 't234.py'),
+                     os.path.join('bootloader', 'ed25519.py'),
+                     os.path.join('bootloader', 'tegrasign_v3_hsm.py'),
+                     os.path.join('bootloader', 'pyfdt')]
+
     def __init__(self, workdir: str, machine: str, soctype: str, bspversion: str):
         logger.debug("machine: {}, soctype: {}, bspversion: {}".format(machine, soctype, bspversion))
-        if soctype not in ['tegra186', 'tegra194', 'tegra210']:
+        if soctype not in ['tegra186', 'tegra194', 'tegra210', 'tegra234']:
             raise ValueError("soctype '{}' invalid".format(soctype))
-        self.toolspath = bsp_tools_path(soctype, bspversion)
+        bspmajor, bspminor = tuple([int(v) for v in bspversion.split('.')[0:2]])
+        self.toolspath = bsp_tools_path(soctype, bspversion, bspmajor)
         if self.toolspath is None:
             raise ValueError("no tools available for soctype={} bspversion={}".format(soctype, bspversion))
         bspmajor, bspminor = tuple([int(v) for v in bspversion.split('.')[0:2]])
@@ -52,8 +57,8 @@ class TegraSigner (Signer):
             self.encrypted_kernel = False
         else:
             self.tegrasign_v3 = (bspmajor > 32 or (bspmajor == 32 and bspminor >= 5))
-            if soctype == 'tegra194':
-                self.encrypted_kernel = True
+            if soctype in ['tegra194', 'tegra234']:
+                self.encrypted_kernel = bspmajor < 34
             else:
                 self.encrypted_kernel = (bspmajor > 32 or (bspmajor == 32 and bspminor >= 6))
         self.scripts = copy.copy(self.signing_scripts)
@@ -67,6 +72,8 @@ class TegraSigner (Signer):
             self.scripts += self.tegrasign_v3_scripts + self.tegrasign_v3_support
         elif bspmajor > 32 or (bspmajor == 32 and bspminor >= 6):
             self.scripts += self.tegrasign_v3_support
+        if bspmajor >= 35:
+            self.scripts += self.r35_and_later
         self.soctype = soctype
         self.machine = machine
         super().__init__(workdir, machine)
@@ -90,8 +97,11 @@ class TegraSigner (Signer):
                 os.makedirs(os.path.join(self.local_toolsdir, subdir), exist_ok=True)
             src = os.path.join(self.toolspath, script)
             dest = os.path.join(self.local_toolsdir, script)
-            if script.endswith('.py') and not ('tegraflash' in script or
-                                               'tegrasign_v3' in script):
+            if os.path.isdir(script):
+                ignore_pat = shutil.ignore_patterns("__pycache__")
+                shutil.copytree(src, dest, ignore=ignore_pat)
+            elif script.endswith('.py') and not ('tegraflash' in script or
+                                                 'tegrasign_v3' in script):
                 shutil.copyfile(src, dest + '.real')
                 shutil.copymode(src, dest + '.real')
                 with open(dest, 'w') as f:
