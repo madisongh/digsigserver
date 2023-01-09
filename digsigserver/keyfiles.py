@@ -23,7 +23,10 @@ class KeyFiles:
         path = os.path.join(self.tmpdir.name, keyname)
         if os.path.exists(path):
             return path
-        utils.uri_fetch(os.path.join(self.keyfileuri, keyname), path)
+        try:
+            utils.uri_fetch(os.path.join(self.keyfileuri, keyname), path)
+        except RuntimeError:
+            pass
         if os.path.exists(path):
             return path
         raise FileNotFoundError('No key file named {}'.format(keyname))
