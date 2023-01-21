@@ -1,7 +1,9 @@
 import argparse
 import os
 import sys
-from digsigserver.server import app
+from sanic import Sanic
+from sanic.worker.loader import AppLoader
+from digsigserver.server import create_app
 
 
 def main():
@@ -12,7 +14,10 @@ def main():
     args = parser.parse_args()
     if not os.getenv('DIGSIGSERVER_KEYFILE_URI'):
         raise RuntimeError('Environment variable DIGSIGSERVER_KEYFILE_URI not set')
-    app.run(host=args.address, port=args.port, debug=args.debug)
+    loader = AppLoader(factory=create_app)
+    app = loader.load()
+    app.prepare(host=args.address, port=args.port, dev=args.debug)
+    Sanic.serve(primary=app, app_loader=loader)
 
 
 if __name__ == '__main__':
