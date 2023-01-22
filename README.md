@@ -2,89 +2,21 @@
 A simple server for processing signing requests via a REST interface, intended for
 use with a cross-build system for embedded Linux. It currently handles signing
 requests for:
-* NVIDIA Jetson bootloader signing
-* Kernel module signing
-* Mender artifact signing
-* Swupdate sw-description signing
-* NXP i.MX SoC family bootloader signing
-* OPTEE trusted application signing
+* [NVIDIA Jetson bootloader signing](doc/tegrasign.md)
+* [Kernel module signing](doc/kmodsign.md)
+* [Mender artifact signing](doc/mendersign.md)
+* [Swupdate sw-description signing](doc/swupdsign.md)
+* [NXP i.MX SoC family bootloader signing](doc/imxsign.md)
+* [OPTEE trusted application signing](doc/opteesign.md)
 
 ## Prerequisites
 Requires Python 3.7 or later and a reasonably modern Linux distro to host
-the server.  (Tested with Ubuntu 18.04 and later.)  See `setup.py` for
-specific Python packages required. 
+the server.  (Tested with Ubuntu 18.04 and later.)  See [setup.cfg](setup.cfg) for
+specific Python packages required.
 
-### Prerequsities: Jetson bootloader signing
-For Jetson bootloader signing, you must download the Linux4Tegra BSP and
-secure boot packages from [NVIDIA's L4T download site](https://developer.nvidia.com/embedded/linux-tegra).
-You must unpack the two tarballs into a specific location in the filesystem
-based on the version and target architecture of the BSP, so they can be found
-by the server.  For example, for L4T R32.4.3 for Jetson TX2/Xavier, you would enter:
-
-    $ sudo mkdir -p /opt/nvidia/L4T-32.4.3-tegra186
-    $ sudo tar -C /opt/nvidia/L4T-32.4.3-tegra186 -xf Tegra186_Linux_R32.4.3_aarch64.tbz2
-    $ sudo tar -C /opt/nvidia/L4T-32.4.3-tegra186 -xf secureboot_R32.4.3_aarch64.tbz2
-
-You can use a different top-level path than `/opt/nvidia` by setting the environment
-variable DIGSIGSERVER_L4T_TOOLS_BASE. The top-level directory under that base path
-must, however, always be `L4T-<version>-<tegraXXX>`, where `version` is the BSP
-version (without the "R" prefix) and `tegraXXX` is either `tegra186` for TX2/Xavier or
-`tegra210` for TX1/Nano. The server supports having multiple versions of the BSP
-installed.
-
-For each BSP version/architecture, you also need a helper script (and possibly one or more
-patches to apply to NVIDIA's scripts), available from the
-[meta-tegra repository](https://github.com/madisongh/meta-tegra).
-
-For L4T R32.4.3, checkout the **dunfell-l4t-r32.4.3** branch of that repository. The helper scripts
-are at `recipes-bsp/tegra-binaries/tegra-helper-scripts/tegraXXX-flash-helper.sh`. The
-needed script(s) should get installed without the `.sh` suffix into the `bootloader`
-directory for the BSP.  For example (for R32.4.3, TX2/Xavier):
-
-    $ cd /path/to/meta-tegra/recipes-bsp/tegra-binaries/tegra-helper-scripts
-    $ sudo install -m 0755 tegra186-flash-helper.sh \
-      /opt/nvidia/L4T-32.4.3-tegra186/Linux_for_Tegra/bootloader/tegra186-flash-helper
-    $ sudo install -m 0755 tegra194-flash-helper.sh \
-      /opt/nvidia/L4T-32.4.3-tegra186/Linux_for_Tegra/bootloader/tegra194-flash-helper
-
-If you are supporting Jetson TX2 or Jetson AGX Xavier devices that use both PKC
-signing and SBK encryption of bootloader files, you will also need to apply at
-least this patch from meta-tegra:
-
-    $ P=/path/to/meta-tegra/recipes-bsp/tegra-binaries/files
-    $ cd /opt/nvidia/L4T-32.4.3-tegra186/Linux_for_Tegra
-    $ sudo patch -p1 < $P/0002-Fix-typo-in-l4t_bup_gen.func.patch
-
-Check the `tegraXXX-flashtools-native` recipes in meta-tegra to see if
-other patches might also be needed.
-
-### Prerequisites: NXP i.MX bootloader signing
-For signing i.MX bootloader/kernel images, you must obtain the NXP code signing tool (CST)
-from the [NXP web site](https://www.nxp.com), and unpack them under `/opt/NXP`. For example,
-using version 3.3.1 of CST:
-
-    $ sudo mkdir -p /opt/NXP
-	$ sudo tar -C /opt/NXP -x -f cst-3.3.1.tgz
-
-You can use a different top-level path than `/opt/NXP` by settin gthe environment
-variable DIGSIGSERVER_IMX_CST_BASE. Multiple versions of CST are supported; the client
-includes the needed version in its request.
-
-### Prerequisites: Kernel module signing
-For kernel module signing, your Linux distribution must have the `sign-file` tool
-at `/usr/src/linux-headers-$(uname -r)/scripts/sign-file`, and that version of the
-tool must be compatible with the kernel you are cross-building.
-
-### Prerequisites: Mender artifact signing
-For Mender artifact signing, you must have the `mender-artifact` tool available
-in the PATH.  Visit [the Mender documentation pages](https://docs.mender.io) and
-go to the "Downloads" section to find a download of a pre-built copy of this tool,
-or follow the instructions there for building it from source.  Installing it in
-`/usr/local/bin` should make it available.
-
-### Prerequisites: Swupdate signing
-For signing `sw-description` files for swupdate packages, `openssl` is required.
-RSA and CMS signing methods are supported.
+The different signers have additional prerequisites, typically involving installation
+of the vendor-supplied tools for generating and applying signatures.  Follow the
+documentation links above for more information.
 
 ## Installing
 Use `pip install` (or `pip3 install` in some cases, to ensure that you are using
@@ -92,29 +24,29 @@ Python 3) to install this package and its dependencies.  You can do this system-
 for a single user (with the `--user` option), or in a Python 3 virtual environment.
 
 ## Configuring
-Configuration is handled through environment variables:
+Configuration is handled through environment variables.
 
 **DIGSIGSERVER_KEYFILE_URI**: this should be set to the location of the signing-key files used
 for signing operations.  The server only retrieves the files when needed and never retains
 them after a signing operation is complete.  Currently, `file://` and `s3://` URIs are
 supported.
 
+Other settings for configuring the underlying Sanic framework can also be provided.
+
+See the documentation pages on the different signers for their specific configuration
+settings (if any)/
+
 **DIGSIGSERVER_L4T_TOOLS_BASE**: path to the directory under which the L4T BSP package(s)
 have been installed.  Defaults to `/opt/nvidia`.
 
-**DIGSIGSERVER_IMX_CST_BASE**: path to the directory under which the NXP CST tools
-have been installed.  Defaults to `/opt/NXP`.
-
-Other settings for configuring the underlying Sanic framework can also be provided.
-
 ### Timeouts
 
-Some signing operations (particularly for bootloader update payloads and Mender
+Some signing operations (particularly for Jetson bootloader update payloads and Mender
 artifacts) can take several minutes to complete, so the server configuration
 sets a default `RESPONSE_TIMEOUT` of five minutes. You may need to increase this
 setting, depending on your server hardware and expected service load. You should
-also configure  client-side timeouts and retries to guard against signing failures
-caused by  service timeouts under load.
+also configure client-side timeouts and retries to guard against signing failures
+caused by service timeouts under load.
 
 ## Running
 Once installed, use the `digsigserver` command to start the server:
@@ -126,191 +58,14 @@ By default, the server listens on address `0.0.0.0` (i.e, all interfaces) and po
 
 ## Signing key storage layout
 The signing key files are expected to be organized under `$DIGSIGSERVER_KEYFILE_URI` based
-on the type of signing operation and the parameters passed in for signing.
-
-### Jetson bootloader signing
-For Jetson bootloader signing, the following files are expected to be present:
-
-    ${DIGSIGSERVER_KEYFILE_URI}/${machine}/tegrasign/rsa_priv.pem
-    ${DIGSIGSERVER_KEYFILE_URI}/${machine}/tegrasign/sbk.txt
-
-where `${machine}` is the value of the `machine=` parameter included in the signing request.
-The `rsa_priv.pem` file is the PKC private key for signing. It **must** be present.
-The `sbk.txt` file is the SBK encryption key.  It is optional, and only need be included
-if your device has had an SBK burned into its secure boot fuses.
-
-### i.MX bootloader signing
-For i.MX signing, the necessary keys and certificates are expected to be present in
-a tarball named `imx-cst-keys.tar.gz`:
-
-    ${DIGSIGSERVER_KEYFILE_URI}/${machine}/imxsign/imx-cst-keys.tar.gz
-
-where `${machine}` is the value of the `machine=` parameter included in the signing request.
-The tarball is expected to include the private keys, certificates, and SRK table file used by
-the `cst` tool to perform the signing. If you use the default PKI generation scripts that
-NXP provides in the CST package, this would likely include:
-
-    keys/IMG*.pem
-	keys/CSF*.pem
-	keys/key_pass.txt
-	crts/IMG*.pem
-	crts/CSF*.pem
-	crts/SRK*table.bin
-
-although the actual contents could vary depending on the number of keys/certs you decided
-to create. The tarball is extracted to the server's temporary working directory during
-signing.  The certificate path names must match exactly those included in the CSF description
-file sent by the client, so using relative path names (or using a flat directory structure,
-if desired) is recommended. Note that the `cst` tool itself assumes that the private key
-assoicated with a certificate either resides in the same directory as the certificate (with
-the filename stem ending with `key` instead of `crt`), or, if the certificate has `crts`
-in the path, a parallel directory called `keys` (along with the `crt` -> `key` remapping
-in the filename).
-
-
-### Kernel module signing
-For kernel module signing, the private and public keys for signing the kernel modules 
-are expected to be at:
-
-    ${DIGSIGSERVER_KEYFILE_URI}/${machine}/kmodsign/kernel-signkey.priv
-    ${DIGSIGSERVER_KEYFILE_URI}/${machine}/kmodsign/kernel-signkey.x509
-
-where `${machine}` is the value of the `machine=` parameter included in the signing request.
-
-### OP-TEE TA signing
-For signing OP-TEE trusted applications, the private key for signing TAs is expected
-to be at:
-
-    ${DIGSIGSERVER_KEYFILE_URI}/${machine}/opteesign/optee-signing-key.pem
-
-where `${machine}` is the value of the `machine=` parameter included in the signing request.
-
-### Mender artifact signing
-For Mender artifacts, the signing key is expected to be at
-
-    ${DIGSIGSERVER_KEYFILE_URI}/${distro}/mender/private.key
-
-where `${distro}` is the value of the `distro=` parameter included in the signing request.
-
-### SWUpdate sw-description signing
-For SWUpdate, the signing key is expected to be at
-
-for RSA:
-
-    ${DIGSIGSERVER_KEYFILE_URI}/${distro}/swupdate/rsa-private.key
-
-For CMS:
-
-    ${DIGSIGSERVER_KEYFILE_URI}/${distro}/swupdate/cms.cert
-    ${DIGSIGSERVER_KEYFILE_URI}/${distro}/swupdate/cms-private.key
-
-where `${distro}` is the value of the `distro=` parameter included in the signing request.
+on the type of signing operation and the parameters passed in for signing.  See the
+documentation for the specific signers you plan to use for details on the expected
+location of signing keys under `$DIGSIGSERVER_KEYFILE_URI`.
 
 ## REST API endpoints
-`digsigserver` exposes the following API endpoints:
+`digsigserver` exposes one or more REST API endpoints under `/sign/` for each of
+the types of signers.  See the [documentation](doc) on each signer for details.
 
-### Jetson bootloader signing
-
-Request type: `POST`
-
-Endpoint: `/sign/tegra`
-
-Expected parameters:
-* `machine=<machine-name>` - a name for the device, used to locate the signing keys
-* `soctype=<soctype>` - one of `tegra186`, `tegra194`, `tegra210`
-* `bspversion=<l4t-version>` - the L4T BSP version, e.g. `32.4.3`
-* `artifact=<body>` - gzip-compressed tarball containing the binaries to be signed
-
-The artifact tarball must also include a `MANIFEST` file with additional
-information about the hardware and contents of the tarball.
-
-Response: gzip-compressed tarball containing the signed binaries
-
-Example client: [tegrasign.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/tegrasign.bbclass)
-
-### i.MX bootloader signing
-
-Request type: `POST`
-
-Endpoint: `/sign/imx`
-
-Expected parameters:
-* `machine=<machine-name>` - a name for the device, used to locate the signing keys
-* `soctype=<soctype>` - currently only `mx8m` recognized (but not currently used)
-* `cstversion=<cst-version>` - the version of CST (e.g., `3.3.1`)
-* `csf=<body>` - plain/text CSF description file
-* `artifact=<body>` - binary associated with the CSF description file
-
-Response: binary CSF blob containing the signing commands, signature hashes, and certificates
-
-The client is responsible for inserting/appending the CSF blob (and an IVT) at the
-correct location in the binary for use on the target device.
-
-Example client: TBD
-
-### Kernel module signing
-
-Request type: `POST`
-
-Endpoint: `/sign/modules`
-
-Expected parameters:
-* `machine=<machine>` - a name for the device, used to locate the signing keys
-* `hashalg=<algname>` (optional) - the hash algorithm to be used, defaults to `sha512`
-* `artifact=<body>` - gzip-compressed tarball containing the tree of modules to be signed
-
-Response: gzip-compressed tarball containing the same tree of modules, signed
-
-Example client: [kernel-module-signing.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/kernel-module-signing.bbclass)
-
-### OP-TEE TA signing
-
-Request type: `POST`
-
-Endpoint: `/sign/optee`
-
-Expected parameters:
-* `machine=<machine>` - a name for the device, used to locate the signing keys
-* `artifact=<body>` - gzip-compressed tarball containing a tree of `<uuid>.stripped-elf` and `<uuid>.ta-version` files
-
-Response: gzip-compressed tarball containing the signed `<uuid>.ta` files
-
-Example client: [kernel-module-signing.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/kernel-module-signing.bbclass)
-
-### Mender artifact signing
-
-Request type: `POST`
-
-Endpoint: `/sign/mender`
-
-Expected parameters:
-* `distro=<distro>` - a name for the "distro", used to locate the signing keys
-* `artifact-uri=<url>` - a URL that `digsigserver` can use to download the Mender artifact
-
-Because Mender full-image artifacts are often hundreds of megabytes or larger, the artifact
-itself is **not** posted in the body of the request.  Instead, a URL is provided (currently
-only supporting `file://` and `s3://` URLs).  The client must upload the artifact to the
-specified location. `digsigserver` will download it, apply the signature, then upload
-the signed copy back to the same location.
-
-Response: no body, just a status code
-
-Example client: [mendersign.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/mendersign.bbclass)
-
-### SWUpdate sw-description signing
-
-Request type: `POST`
-
-Endpoint: `/sign/swupdate`
-
-Expected parameters:
-* `distro=<distro>` - a name for the "distro", used to locate the signing keys
-* `sw-description=<body>` - the contents of the `sw-description` file to have signatures included
-
-Response: a `sw-description` file with signatures inserted
-
-Example client: [swupdatesign.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/swupdatesign.bbclass)
- 
 ## Securing signing keys
 Signing keys should obviously be kept as secure as possible, but the specifics of doing
 that will depend on your specific workflows and facilities.  `digsigserver` does not
