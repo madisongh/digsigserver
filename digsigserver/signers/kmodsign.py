@@ -1,13 +1,14 @@
 import os
 import re
 from digsigserver.signers import Signer
+from sanic import Sanic
 
 
 class KernelModuleSigner(Signer):
 
     keytag = 'kmodsign'
 
-    def __init__(self, workdir: str, machine: str, hashalg: str):
+    def __init__(self, app: Sanic, workdir: str, machine: str, hashalg: str):
         signcmd = os.path.join('/usr', 'src', 'linux-headers-{}'.format(os.uname().release),
                                'scripts', 'sign-file')
         if not os.path.exists(signcmd):
@@ -16,7 +17,7 @@ class KernelModuleSigner(Signer):
         if not re.match(r'sha(256|384|512)$', hashalg):
             raise ValueError('unrecognized hash algorithm: {}'.format(hashalg))
         self.hashalg = hashalg
-        super().__init__(workdir, machine)
+        super().__init__(app, workdir, machine)
 
     def sign(self) -> bool:
         privkey = self.keys.get('kernel-signkey.priv')

@@ -1,16 +1,9 @@
 import os
 import copy
 from digsigserver.signers import Signer
-from digsigserver import server
 
+from sanic import Sanic
 from sanic.log import logger
-
-
-def bsp_tools_path(cstversion: str) -> str:
-    toolspath = os.path.join(server.config_get('IMX_CST_BASE'),
-                             'cst-{}'.format(cstversion),
-                             'linux64', 'bin')
-    return toolspath if os.path.exists(toolspath) else None
 
 
 class IMXSigner (Signer):
@@ -18,16 +11,18 @@ class IMXSigner (Signer):
     keytag = 'imxsign'
     supported_soctypes = ['mx8m']
 
-    def __init__(self, workdir: str, machine: str, soctype: str, cstversion: str):
+    def __init__(self, app: Sanic, workdir: str, machine: str, soctype: str, cstversion: str):
         logger.debug("machine: {}, soctype: {}, bspversion: {}".format(machine, soctype, cstversion))
         if soctype not in self.supported_soctypes:
             raise ValueError("soctype '{}' invalid".format(soctype))
-        self.toolspath = bsp_tools_path(cstversion)
-        if self.toolspath is None:
+        self.toolspath = os.path.join(app.config.get('IMX_CST_BASE'),
+                                      'cst-{}'.format(cstversion),
+                                      'linux64', 'bin')
+        if not os.path.exists(self.toolspath):
             raise ValueError("no tools available for cstversion={}".format(cstversion))
         self.soctype = soctype
         self.machine = machine
-        super().__init__(workdir, machine)
+        super().__init__(app, workdir, machine)
 
     def _prepare_path(self) -> dict:
         env = dict(copy.deepcopy(os.environ))

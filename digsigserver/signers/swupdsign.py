@@ -1,17 +1,17 @@
 import shutil
 from digsigserver.signers import Signer
+from sanic import Sanic
 
 
 class SwupdateSigner(Signer):
-
     keytag = 'swupdate'
 
-    def __init__(self, workdir: str, distro: str):
+    def __init__(self, app: Sanic, workdir: str, distro: str):
         signcmd = shutil.which('openssl')
         if not signcmd:
             raise RuntimeError('no openssl command')
         self.signcmd = signcmd
-        super().__init__(workdir, distro)
+        super().__init__(app, workdir, distro)
 
     def sign(self, method: str, sw_description: str, outfile: str) -> bool:
         if method == "RSA":
