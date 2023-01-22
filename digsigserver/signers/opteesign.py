@@ -1,6 +1,5 @@
 import os
 from digsigserver.signers import Signer
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
@@ -25,7 +24,7 @@ algorithms = {'TEE_ALG_RSASSA_PKCS1_PSS_MGF1_SHA256': 0x70414930,
 def _sign_ta(img: bytes, dirpath: str, uuid: str,
              ta_version: str, key: rsa.RSAPrivateKey) -> bool:
     chosen_hash = hashes.SHA256()
-    h = hashes.Hash(chosen_hash, default_backend())
+    h = hashes.Hash(chosen_hash)
 
     digest_len = chosen_hash.digest_size
     sig_len = math.ceil(key.key_size / 8)
@@ -72,7 +71,7 @@ class OPTEESigner (Signer):
         with open(keyfile, 'rb') as f:
             data = f.read()
             try:
-                key = serialization.load_pem_private_key(data, password=None, backend=default_backend())
+                key = serialization.load_pem_private_key(data, password=None)
             except ValueError:
                 logger.error("could not parse RSA private key")
                 self.keys.cleanup()
