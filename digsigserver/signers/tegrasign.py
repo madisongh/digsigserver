@@ -3,17 +3,9 @@ import copy
 import shutil
 from typing import Optional
 from digsigserver.signers import Signer
-from digsigserver import server
 
+from sanic import Sanic
 from sanic.log import logger
-
-
-def bsp_tools_path(soctype: str, bspversion: str) -> str:
-    suffix = 'tegra186' if soctype == 'tegra194' else soctype
-    toolspath = os.path.join(server.config_get('L4T_TOOLS_BASE'),
-                             'L4T-{}-{}'.format(bspversion, suffix),
-                             'Linux_for_Tegra')
-    return toolspath if os.path.exists(toolspath) else None
 
 
 class TegraSigner (Signer):
@@ -33,12 +25,14 @@ class TegraSigner (Signer):
                             os.path.join('bootloader', 'tegrasign_v3_internal.py'),
                             os.path.join('bootloader', 'tegrasign_v3_util.py')]
 
-    def __init__(self, workdir: str, machine: str, soctype: str, bspversion: str):
+    def __init__(self, app: Sanic, workdir: str, machine: str, soctype: str, bspversion: str):
         logger.debug("machine: {}, soctype: {}, bspversion: {}".format(machine, soctype, bspversion))
         if soctype not in ['tegra186', 'tegra194', 'tegra210']:
             raise ValueError("soctype '{}' invalid".format(soctype))
-        self.toolspath = bsp_tools_path(soctype, bspversion)
-        if self.toolspath is None:
+        self.toolspath = os.path.join(app.config.get('L4T_TOOLS_BASE'),
+                                      'L4T-{}-{}'.format(bspversion, 'tegra186' if soctype == 'tegra186' else soctype),
+                                      'Linux_for_Tegra')
+        if not os.path.exists(self.toolspath):
             raise ValueError("no tools available for soctype={} bspversion={}".format(soctype, bspversion))
         bspmajor, bspminor = tuple([int(v) for v in bspversion.split('.')[0:2]])
         if soctype == 'tegra210':
@@ -63,7 +57,7 @@ class TegraSigner (Signer):
             self.scripts += self.tegrasign_v3_support
         self.soctype = soctype
         self.machine = machine
-        super().__init__(workdir, machine)
+        super().__init__(app, workdir, machine)
         self.local_toolsdir = os.path.join(self.workdir, '_tools')
         logger.debug("scripts: {}".format(self.scripts))
 

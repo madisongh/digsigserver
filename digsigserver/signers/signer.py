@@ -2,6 +2,7 @@ import os
 import subprocess
 from typing import Optional
 from digsigserver.keyfiles import KeyFiles
+from sanic import Sanic
 from sanic.log import logger
 
 
@@ -9,9 +10,10 @@ class Signer:
 
     keytag = 'Unknown'
 
-    def __init__(self, workdir: str, key_selector: str):
+    def __init__(self, app: Sanic, workdir: str, key_selector: str):
+        self.app = app
         self.workdir = workdir
-        self.keys = KeyFiles(self.keytag, key_selector)
+        self.keys = KeyFiles(app, self.keytag, key_selector)
 
     def sign(self, *args) -> bool:
         raise RuntimeError("unimplemented sign method")

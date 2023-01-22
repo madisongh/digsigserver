@@ -26,10 +26,11 @@ CodesignSanicDefaults = {
     'LOG_LEVEL': 'DEBUG'
 }
 
-
 """
 Actual initialization happens here
 """
+
+
 def create_app() -> Sanic:
     app = Sanic(name='digsigserver', env_prefix='DIGSIGSERVER_')
     app.config.update_config(CodesignSanicDefaults)
@@ -87,8 +88,8 @@ async def return_tarball(req: request, workdir: str, return_filename: str = "sig
     os.unlink(outfile.name)
     return response
 
-def attach_endpoints(app: Sanic):
 
+def attach_endpoints(app: Sanic):
     @app.post("/sign/tegra")
     async def sign_handler_tegra(req: request):
         f = validate_upload(req, "artifact")
@@ -96,7 +97,8 @@ def attach_endpoints(app: Sanic):
             return text("Invalid artifact", status=400)
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = TegraSigner(workdir, req.form.get("machine"), req.form.get("soctype"), req.form.get("bspversion"))
+                s = TegraSigner(app, workdir, req.form.get("machine"), req.form.get("soctype"),
+                                req.form.get("bspversion"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
@@ -115,7 +117,6 @@ def attach_endpoints(app: Sanic):
                     return await return_tarball(req, workdir)
         return text("Signing error", status=500)
 
-
     @app.post("/sign/imx")
     async def sign_handler_imx(req: request):
         csf = validate_upload(req, "csf", ok_types=["text/plain"])
@@ -126,7 +127,8 @@ def attach_endpoints(app: Sanic):
             return text("Invalid artifact", status=400)
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = IMXSigner(workdir, req.form.get("machine"), req.form.get("soctype"), req.form.get("cstversion"))
+                s = IMXSigner(app, workdir, req.form.get("machine"), req.form.get("soctype"),
+                              req.form.get("cstversion"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
@@ -145,7 +147,6 @@ def attach_endpoints(app: Sanic):
                 response = text("Signing error", status=500)
         return response
 
-
     @app.post("/sign/modules")
     async def sign_handler_modules(req: request):
         f = validate_upload(req, "artifact")
@@ -153,7 +154,7 @@ def attach_endpoints(app: Sanic):
             return text("Invalid artifact", status=400)
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = KernelModuleSigner(workdir, req.form.get("machine"), req.form.get("hashalg", "sha512"))
+                s = KernelModuleSigner(app, workdir, req.form.get("machine"), req.form.get("hashalg", "sha512"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
@@ -162,7 +163,6 @@ def attach_endpoints(app: Sanic):
                 if result:
                     return await return_tarball(req, workdir)
         return text("Signing error", status=500)
-
 
     @app.post("/sign/optee")
     async def sign_handler_optee(req: request):
@@ -171,7 +171,7 @@ def attach_endpoints(app: Sanic):
             return text("Invalid artifact", status=400)
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = OPTEESigner(workdir, req.form.get("machine"))
+                s = OPTEESigner(app, workdir, req.form.get("machine"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
@@ -180,7 +180,6 @@ def attach_endpoints(app: Sanic):
                 if result:
                     return await return_tarball(req, workdir)
         return text("Signing error", status=500)
-
 
     @app.post("/sign/swupdate")
     async def sign_handler_swupdate(req: request):
@@ -195,7 +194,7 @@ def attach_endpoints(app: Sanic):
             return text("Invalid sw-description", status=400)
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = SwupdateSigner(workdir, distro)
+                s = SwupdateSigner(app, workdir, distro)
             except ValueError:
                 logger.info("could not init signer")
                 return text("Invalid parameters", status=400)
@@ -213,7 +212,6 @@ def attach_endpoints(app: Sanic):
         os.unlink(outfile.name)
         return response
 
-
     @app.post("/sign/mender")
     async def sign_handler_mender(req: request):
         artifact = req.form.get('artifact-uri')
@@ -224,7 +222,7 @@ def attach_endpoints(app: Sanic):
             return text("Distro name missing", status=400)
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = MenderSigner(workdir, distro, artifact)
+                s = MenderSigner(app, workdir, distro, artifact)
             except ValueError:
                 return text("Invalid parameters", status=400)
             if await asyncio.get_running_loop().run_in_executor(None, s.sign):

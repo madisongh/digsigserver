@@ -1,17 +1,17 @@
 import tempfile
 import os
 
-from . import server
+from sanic import Sanic
 from . import utils
 
 
 class KeyFiles:
     signing_types = ['tegrasign', 'imxsign', 'kmodsign', 'mender', 'swupdate', 'opteesign']
 
-    def __init__(self, signtype: str, machine_or_distro: str):
+    def __init__(self, app: Sanic, signtype: str, machine_or_distro: str):
         if signtype not in self.signing_types:
             raise RuntimeError('unrecognized signing type: {}'.format(signtype))
-        self.keyfileuri = '{}/{}/{}/'.format(server.config_get('KEYFILE_URI'),
+        self.keyfileuri = '{}/{}/{}/'.format(app.config.get('KEYFILE_URI'),
                                              machine_or_distro, signtype)
         self.tmpdir = None
         if not utils.uri_exists(self.keyfileuri, is_dir=True):

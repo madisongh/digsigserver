@@ -10,6 +10,7 @@ from uuid import UUID
 import struct
 import math
 
+from sanic import Sanic
 from sanic.log import logger
 
 SHDR_BOOTSTRAP_TA = 1
@@ -61,10 +62,10 @@ class OPTEESigner (Signer):
 
     keytag = 'opteesign'
 
-    def __init__(self, workdir: str, machine: str):
+    def __init__(self, app: Sanic, workdir: str, machine: str):
         logger.debug("machine: {}".format(machine))
         self.machine = machine
-        super().__init__(workdir, machine)
+        super().__init__(app, workdir, machine)
 
     def sign(self) -> bool:
         keyfile = self.keys.get('optee-signing-key.pem')
