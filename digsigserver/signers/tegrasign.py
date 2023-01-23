@@ -30,7 +30,7 @@ class TegraSigner (Signer):
         if soctype not in ['tegra186', 'tegra194', 'tegra210']:
             raise ValueError("soctype '{}' invalid".format(soctype))
         self.toolspath = os.path.join(app.config.get('L4T_TOOLS_BASE'),
-                                      'L4T-{}-{}'.format(bspversion, 'tegra186' if soctype == 'tegra186' else soctype),
+                                      'L4T-{}-{}'.format(bspversion, 'tegra186' if soctype == 'tegra194' else soctype),
                                       'Linux_for_Tegra')
         if not os.path.exists(self.toolspath):
             raise ValueError("no tools available for soctype={} bspversion={}".format(soctype, bspversion))
