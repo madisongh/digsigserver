@@ -4,6 +4,7 @@ import subprocess
 from urllib.parse import urlparse
 from sanic import request
 from sanic.log import logger
+from typing import Optional
 
 
 def extract_files(workdir: str, f: request.File) -> bool:
@@ -87,3 +88,9 @@ def upload_file(filename: str, uri: str):
             raise RuntimeError('cmd:{}\nstderr: {}'.format(' '.join(cmd), e.stderr))
         return
     raise RuntimeError('unrecognized URI: {}'.format(uri))
+
+
+def to_boolean(boolstr: Optional[str]) -> bool:
+    if not boolstr:
+        return False
+    return boolstr.upper() in ["Y", "YES", "1", "T", "TRUE", "ON"]
