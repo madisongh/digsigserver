@@ -14,6 +14,7 @@ from digsigserver.signers.kmodsign import KernelModuleSigner
 from digsigserver.signers.opteesign import OPTEESigner
 from digsigserver.signers.mendersign import MenderSigner
 from digsigserver.signers.swupdsign import SwupdateSigner
+from digsigserver.signers.rksign import RockchipSigner
 from . import utils
 
 # Signing can take a loooong time, so set a more reasonable
@@ -116,6 +117,33 @@ def attach_endpoints(app: Sanic):
                 if result:
                     return await return_tarball(req, workdir)
         return text("Signing error", status=500)
+
+    @app.post("/sign/rk")
+    async def sign_handler_rk_kernel_fit(req: request):
+        f = validate_upload(req, "artifact")
+        if not f:
+            return text("Invalid artifact", status=400)
+        with tempfile.TemporaryDirectory() as workdir:
+            try:
+                s = RockchipSigner(app, workdir, req.form.get("machine"), req.form.get("soctype"))
+            except ValueError:
+                return text("Invalid parameters", status=400)
+
+            artifact_type = req.form.get("artifact_type").lower()
+            burn_key_hash = utils.to_boolean(req.form.get("burn_key_hash", "no"))
+            if artifact_type not in ["fit-data", "idblock", "usbloader"]:
+                return text("Invalid artifact type", status=400)
+            with open(os.path.join(workdir, "artifact"), "wb") as artifact:
+                artifact.write(f.body)
+            outfile = tempfile.NamedTemporaryFile(delete=False)
+            outfile.close()
+            if await asyncio.get_running_loop().run_in_executor(None, s.sign, artifact_type,
+                                                                burn_key_hash, artifact.name, outfile.name):
+                await return_file(req, outfile.name, "artifact.signed")
+                response = None
+            else:
+                response = text("Signing error", status=500)
+        return response
 
     @app.post("/sign/imx")
     async def sign_handler_imx(req: request):
