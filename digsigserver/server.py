@@ -15,6 +15,7 @@ from digsigserver.signers.opteesign import OPTEESigner
 from digsigserver.signers.mendersign import MenderSigner
 from digsigserver.signers.swupdsign import SwupdateSigner
 from digsigserver.signers.rksign import RockchipSigner
+from digsigserver.signers.uefisign import UefiSigner
 from . import utils
 
 # Signing can take a loooong time, so set a more reasonable
@@ -191,6 +192,37 @@ def attach_endpoints(app: Sanic):
                 if result:
                     return await return_tarball(req, workdir)
         return text("Signing error", status=500)
+
+    @app.post("/sign/tegra/uefi")
+    async def sign_handler_uefi(req: request):
+        f = validate_upload(req, "artifact")
+        if not f:
+            return text("Invalid artifact", status=400)
+        with tempfile.TemporaryDirectory() as workdir:
+            try:
+                s = UefiSigner(app,
+                               workdir,
+                               req.form.get("machine"),
+                               req.form.get("signing_type"))
+            except ValueError:
+                return text("Invalid parameters", status=400)
+
+            signing_type = req.form.get("signing_type").lower()
+            if signing_type not in ["sbsign", "signature", "attach_signature"]:
+                return text("Invalid signing type", status=400)
+            with open(os.path.join(workdir, "artifact"), "wb") as artifact:
+                artifact.write(f.body)
+            outfile = tempfile.NamedTemporaryFile(delete=False)
+            outfile.close()
+            if await asyncio.get_running_loop().run_in_executor(None,
+                                                                s.sign,
+                                                                artifact.name,
+                                                                outfile.name):
+                await return_file(req, outfile.name, "artifact.signed")
+                response = None
+            else:
+                response = text("Signing error", status=500)
+        return response
 
     @app.post("/sign/optee")
     async def sign_handler_optee(req: request):
