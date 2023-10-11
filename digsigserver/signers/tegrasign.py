@@ -174,8 +174,12 @@ class TegraSigner (Signer):
             cmd += ['-v', sbk]
         if user_key:
             cmd += ['--user_key', user_key]
-        cfg_args = '{0}.cfg,{0}-override.cfg' if self.soctype == 'tegra194' else '{0}.cfg'
-        cmd += ['flash.xml.in', env['DTBFILE'], cfg_args.format(self.machine), env['ODMDATA']]
+        try:
+            cfg_args = env['EMMC_BCTS']
+        except KeyError:
+            cfg_args = '{0}.cfg,{0}-override.cfg' if self.soctype == 'tegra194' else '{0}.cfg'
+            cfg_args = cfg_args.format(self.machine)
+        cmd += ['flash.xml.in', env['DTBFILE'], cfg_args, env['ODMDATA']]
 
         if self.soctype == 'tegra210':
             cmd.append(env['boardcfg'])
