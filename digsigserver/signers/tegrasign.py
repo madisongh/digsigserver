@@ -25,9 +25,21 @@ class TegraSigner (Signer):
                             os.path.join('bootloader', 'tegrasign_v3_internal.py'),
                             os.path.join('bootloader', 'tegrasign_v3_util.py')]
 
+    r35_and_later = [os.path.join('bootloader', 'dtbcheck.py'),
+                     os.path.join('bootloader', 'tegraflash_impl_t234.py'),
+                     os.path.join('bootloader', 't194.py'),
+                     os.path.join('bootloader', 't234.py'),
+                     os.path.join('bootloader', 'ed25519.py'),
+                     os.path.join('bootloader', 'tegrasign_v3_hsm.py'),
+                     os.path.join('bootloader', 'tegraopenssl'),
+                     os.path.join('bootloader', 'pyfdt')]
+
+    wrapped_scripts = [os.path.join('bootloader', 'BUP_generator.py'),
+                       os.path.join('bootloader', 'rollback', 'rollback_parser.py')]
+
     def __init__(self, app: Sanic, workdir: str, machine: str, soctype: str, bspversion: str):
         logger.debug("machine: {}, soctype: {}, bspversion: {}".format(machine, soctype, bspversion))
-        if soctype not in ['tegra186', 'tegra194', 'tegra210']:
+        if soctype not in ['tegra186', 'tegra194', 'tegra210', 'tegra234']:
             raise ValueError("soctype '{}' invalid".format(soctype))
         self.toolspath = os.path.join(app.config.get('L4T_TOOLS_BASE'),
                                       'L4T-{}-{}'.format(bspversion, 'tegra186' if soctype == 'tegra194' else soctype),
@@ -35,13 +47,14 @@ class TegraSigner (Signer):
         if not os.path.exists(self.toolspath):
             raise ValueError("no tools available for soctype={} bspversion={}".format(soctype, bspversion))
         bspmajor, bspminor = tuple([int(v) for v in bspversion.split('.')[0:2]])
+        self.bspmajor = bspmajor
         if soctype == 'tegra210':
             self.tegrasign_v3 = False
             self.encrypted_kernel = False
         else:
             self.tegrasign_v3 = (bspmajor > 32 or (bspmajor == 32 and bspminor >= 5))
-            if soctype == 'tegra194':
-                self.encrypted_kernel = True
+            if soctype in ['tegra194', 'tegra234']:
+                self.encrypted_kernel = bspmajor < 34
             else:
                 self.encrypted_kernel = (bspmajor > 32 or (bspmajor == 32 and bspminor >= 6))
         self.scripts = copy.copy(self.signing_scripts)
@@ -55,6 +68,8 @@ class TegraSigner (Signer):
             self.scripts += self.tegrasign_v3_scripts + self.tegrasign_v3_support
         elif bspmajor > 32 or (bspmajor == 32 and bspminor >= 6):
             self.scripts += self.tegrasign_v3_support
+        if bspmajor >= 35:
+            self.scripts += self.r35_and_later
         self.soctype = soctype
         self.machine = machine
         super().__init__(app, workdir, machine)
@@ -78,8 +93,10 @@ class TegraSigner (Signer):
                 os.makedirs(os.path.join(self.local_toolsdir, subdir), exist_ok=True)
             src = os.path.join(self.toolspath, script)
             dest = os.path.join(self.local_toolsdir, script)
-            if script.endswith('.py') and not ('tegraflash' in script or
-                                               'tegrasign_v3' in script):
+            if os.path.isdir(src):
+                ignore_pat = shutil.ignore_patterns("__pycache__")
+                shutil.copytree(src, dest, ignore=ignore_pat)
+            elif script.endswith('.py') and script in self.wrapped_scripts:
                 shutil.copyfile(src, dest + '.real')
                 shutil.copymode(src, dest + '.real')
                 with open(dest, 'w') as f:
@@ -93,6 +110,8 @@ class TegraSigner (Signer):
         # Finally, we need some symlinks in the working directory to point to
         # some of the tools
         self._prepare_symlinks(['tegraflash.py', 'BUP_generator.py'])
+        if self.bspmajor >= 35:
+            self._prepare_symlinks(['dtbcheck.py', 't194.py', 't234.py'])
         if self.soctype == "tegra210":
             # XXX
             # Older versions of tegra210-flash-helper directly write the
