@@ -6,7 +6,17 @@ from . import utils
 
 
 class KeyFiles:
-    signing_types = ['tegrasign', 'imxsign', 'kmodsign', 'mender', 'swupdate', 'opteesign', 'rksign', 'uefisign']
+    signing_types = [
+        'tegrasign',
+        'imxsign',
+        'kmodsign',
+        'mender',
+        'swupdate',
+        'opteesign',
+        'rksign',
+        'uefisign',
+        'ueficapsulesign'
+    ]
 
     def __init__(self, app: Sanic, signtype: str, machine_or_distro: str):
         if signtype not in self.signing_types:
