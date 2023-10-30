@@ -23,6 +23,7 @@ from . import utils
 # default response timeout
 CodesignSanicDefaults = {
     'RESPONSE_TIMEOUT': 600,
+    'REQUEST_MAX_SIZE': 600000000,
     'L4T_TOOLS_BASE': '/opt/nvidia',
     'IMX_CST_BASE': '/opt/NXP',
     'KEYFILE_URI': 'file:///please/configure/this/path',
