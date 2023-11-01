@@ -16,6 +16,7 @@ from digsigserver.signers.mendersign import MenderSigner
 from digsigserver.signers.swupdsign import SwupdateSigner
 from digsigserver.signers.rksign import RockchipSigner
 from digsigserver.signers.uefisign import UefiSigner
+from digsigserver.signers.ueficapsulesign import UefiCapsuleSigner
 from . import utils
 
 # Signing can take a loooong time, so set a more reasonable
@@ -219,6 +220,37 @@ def attach_endpoints(app: Sanic):
                                                                 artifact.name,
                                                                 outfile.name):
                 await return_file(req, outfile.name, "artifact.signed")
+                response = None
+            else:
+                response = text("Signing error", status=500)
+        return response
+
+    @app.post("/sign/tegra/ueficapsule")
+    async def sign_handler_uefi_capsule(req: request):
+        f = validate_upload(req, "artifact")
+        if not f:
+            return text("Invalid artifact", status=400)
+        with tempfile.TemporaryDirectory() as workdir:
+            try:
+                s = UefiCapsuleSigner(
+                    app,
+                    workdir,
+                    req.form.get("machine"),
+                    req.form.get("soctype"),
+                    req.form.get("bspversion"),
+                    req.form.get("guid"))
+            except ValueError:
+                return text("Invalid parameters", status=400)
+
+            with open(os.path.join(workdir, "artifact"), "wb") as artifact:
+                artifact.write(f.body)
+            outfile = tempfile.NamedTemporaryFile(delete=False)
+            outfile.close()
+            if await asyncio.get_running_loop().run_in_executor(None,
+                                                                s.generate_signed_capsule,
+                                                                artifact.name,
+                                                                outfile.name):
+                await return_file(req, outfile.name, "artifact.cap")
                 response = None
             else:
                 response = text("Signing error", status=500)
