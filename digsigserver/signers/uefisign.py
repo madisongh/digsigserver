@@ -1,5 +1,3 @@
-import os
-import copy
 import shutil
 
 from digsigserver.signers import Signer

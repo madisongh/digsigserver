@@ -1,6 +1,4 @@
 import os
-import copy
-import shutil
 
 from digsigserver.signers import Signer
 
@@ -22,14 +20,13 @@ class UefiCapsuleSigner (Signer):
         if not os.path.exists(self.toolspath):
             raise ValueError('no tools available for soctype={} bspversion={}'.format(soctype, bspversion))
         verparts = bspversion.split('.')
-        self.bsp_version32 = hex(int(verparts[0])<<16 | int(verparts[1])<<8 | int(verparts[2]))
+        self.bsp_version32 = hex(int(verparts[0]) << 16 | int(verparts[1]) << 8 | int(verparts[2]))
         logger.debug('bsp_version32 = {}'.format(self.bsp_version32))
         self.machine = machine
         self.guid = guid
         super().__init__(app, workdir, machine)
 
     def generate_signed_capsule(self, infile: str, outfile: str) -> bool:
-        result = False
         signer_private_cert = self.keys.get('signer_private_cert.pem')
         other_public_cert = self.keys.get('other_public_cert.pem')
         trusted_public_cert = self.keys.get('trusted_public_cert.pem')
