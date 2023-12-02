@@ -27,12 +27,24 @@ Then build the signing server container image:
 
 # Running
 
-Your private key should be located in the home directory of the account used to run the containerized signing server.  Modify the mount point(s) to mount the PKC private key per the [Key file storage layout](../doc/tegrasign.md#Key-file-storage-layout).
+The following script fragment is helpful to setup the mount points to the keys according to the following key file storage layouts:
+
+* [tegra signing](../doc/tegrasign.md#Key-file-storage-layout)
+* [tegra uefi signing](../doc/uefisign.md#key-file-storage-layout)
+* [tegra uefi capsule signing](../doc/ueficapsulesign.md#key-file-storage-layout)
 
 ```
+export SIGNING_KEYS=/path/to/signing-keys
+export MACHINE=[jetson-xavier-nx-devkit-emmc|jetson-agx-orin-devkit|etc.]
+
 docker run -d \
 --restart unless-stopped \
---mount type=bind,source=$HOME/rsa_priv.pem,target=/work/{machine}/tegrasign/rsa_priv.pem,readonly \
+--mount type=bind,source=$HOME/$SIGNING_KEYS/rsa_priv.pem,target=/digsigserver/$MACHINE/tegrasign/rsa_priv.pem,readonly \
+--mount type=bind,source=$HOME/$SIGNING_KEYS/db_1.key,target=/digsigserver/$MACHINE/uefisign/db.key,readonly \
+--mount type=bind,source=$HOME/$SIGNING_KEYS/db_1.crt,target=/digsigserver/$MACHINE/uefisign/db.crt,readonly \
+--mount type=bind,source=$HOME/$SIGNING_KEYS/NewRoot.pub.pem,target=/digsigserver/$MACHINE/ueficapsulesign/trusted_public_cert.pem,readonly \
+--mount type=bind,source=$HOME/$SIGNING_KEYS/NewSub.pub.pem,target=/digsigserver/$MACHINE/ueficapsulesign/other_public_cert.pem,readonly \
+--mount type=bind,source=$HOME/$SIGNING_KEYS/NewCert.pem,target=/digsigserver/$MACHINE/ueficapsulesign/signer_private_cert.pem,readonly \
 -p 9999:9999 \
 digsigserver:latest
 ```
