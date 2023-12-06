@@ -57,6 +57,9 @@ Expected parameters:
 * `csf=<body>` - plain/text CSF description file
 * `artifact=<body>` - binary associated with the CSF description file
 
+Optional parameters:
+* `backend=<backend-type>` - backend can be pkcs11 or ssl, defaults to ssl if ommitted
+
 Response: binary CSF blob containing the signing commands, signature hashes, and certificates
 
 The client is responsible for inserting/appending the CSF blob (and an IVT) at the
