@@ -76,6 +76,10 @@ If you run `digsigserver` on a locked-down server, storing the key files in the 
 filesystem on that server may be adequate.  An AWS S3 bucket, combined with, for example,
 bucket-level AWS KMS encryption, may be a viable alternative.
 
+## i.MX signing using a YubHSM 2 hardware token
+See [i.MX Signing Using a YubiHSM 2 Hardware Token](./doc/imxsign-yubihsm.md) for details on how to set up 
+the YubiHSM 2 and invoke the server.
+
 ## Securing the signing service
 By default, `digsigserver` runs as an unsecured HTTP-based service, and is not intended
 to be run as-is on an Internet-connected server.  If you need to control access to it,

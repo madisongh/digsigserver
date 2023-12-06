@@ -61,6 +61,9 @@ digsigserver:latest
 
 # i.MX Signing with YubiHSM 2 hardware token
 
+See [i.MX Signing Using a YubiHSM 2 Hardware Token](../doc/imxsign-yubihsm.md) for details on how to set up the YubiHSM 2 
+and invoke the server.
+
 ## Building
 
 A separate dockerfile called Dockerfile.nxp-hsm is included here as it adds a lot of stuff to support pkcs11 and the YubiHSM 2 which 
