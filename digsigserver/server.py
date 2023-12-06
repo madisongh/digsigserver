@@ -159,7 +159,7 @@ def attach_endpoints(app: Sanic):
         with tempfile.TemporaryDirectory() as workdir:
             try:
                 s = IMXSigner(app, workdir, req.form.get("machine"), req.form.get("soctype"),
-                              req.form.get("cstversion"))
+                              req.form.get("cstversion"), req.form.get("backend"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
