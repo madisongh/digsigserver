@@ -165,7 +165,7 @@ def attach_endpoints(app: Sanic):
 
             with open(os.path.join(workdir, "csf-input.txt"), "w") as csfinput:
                 csfinput.write(csf.body.decode('UTF-8'))
-            with open(os.path.join(workdir, "artifact"), "wb") as artifact:
+            with open(os.path.join(workdir, f.name), "wb") as artifact:
                 artifact.write(f.body)
 
             outfile = tempfile.NamedTemporaryFile(delete=False)
