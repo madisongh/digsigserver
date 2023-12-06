@@ -1,0 +1,85 @@
+FROM ubuntu:18.04
+
+RUN apt-get update && apt-get install -y \
+  device-tree-compiler \
+  liblz4-tool \
+  python2.7 \
+  python3.7 \
+  python3.7-dev \
+  python3-pip \
+  sbsigntool \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --install /usr/bin/python  python  /usr/bin/python2.7 1
+RUN update-alternatives --install /usr/bin/python2 python2 /usr/bin/python2.7 1
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
+
+RUN pip3 install --upgrade pip
+
+RUN pip3 install PyYAML
+
+ENV DIGSIGSERVER=/digsigserver
+ENV DIGSIGSERVER_KEYFILE_URI=${DIGSIGSERVER}
+
+WORKDIR ${DIGSIGSERVER}
+
+COPY digsigserver ${DIGSIGSERVER}/digsigserver
+COPY requirements.txt ${DIGSIGSERVER}
+COPY setup.cfg ${DIGSIGSERVER}
+COPY setup.py ${DIGSIGSERVER}
+
+RUN pip3 install -e .
+
+# Include any nxp tool archives in docker/nxp_tools
+RUN mkdir -p /opt/NXP
+ADD docker/nxp_tools/* /opt/NXP/
+
+# Add opensc and pkcs11 etc.
+RUN apt-get update && apt-get install -y \
+  p11-kit \
+  opensc \
+  libengine-pkcs11-openssl \
+  libcurl4 \
+  wget \
+  libedit2 \
+  && rm -rf /var/lib/apt/lists/*
+
+# Add support for YubiHSM 2
+# --force-overwrite as libyubihsm-dev_2.4.2_amd64.deb and libykhsmauth-dev 2.4.2 both include /usr/include/ykhsmauth.h
+RUN mkdir -p /opt/yubico && \
+    wget -q -O - https://developers.yubico.com/YubiHSM2/Releases/yubihsm2-sdk-2023-11-ubuntu1804-amd64.tar.gz | \
+    tar xzf - -C /opt/yubico && \
+    cd /opt/yubico/yubihsm2-sdk && \
+    dpkg -i --force-overwrite \
+    ./libykhsmauth1_2.4.2_amd64.deb \
+    ./libyubihsm-http1_2.4.2_amd64.deb \
+    ./yubihsm-auth_2.4.2_amd64.deb \
+    ./yubihsm-shell_2.4.2_amd64.deb \
+    ./libykhsmauth-dev_2.4.2_amd64.deb \
+    ./libyubihsm-usb1_2.4.2_amd64.deb \
+    ./yubihsm-connector_3.0.4-1_amd64.deb \
+    ./yubihsm-wrap_2.4.2_amd64.deb \
+    ./libyubihsm1_2.4.2_amd64.deb \
+    ./yubihsm-pkcs11_2.4.2_amd64.deb \
+    ./libyubihsm-dev_2.4.2_amd64.deb \
+    ./yubihsm-setup_2.3.1-1_amd64.deb && \
+    rm -rf /opt/yubico
+
+RUN yubihsm-connector install
+
+# Add p11-kit module and yubihsm connector
+RUN echo "priority: 10\nmodule: /usr/lib/x86_64-linux-gnu/pkcs11/yubihsm_pkcs11.so" > /usr/share/p11-kit/modules/yubihsm2.module && \
+    echo "connector = http://127.0.0.1:12345\n" >> /etc/yubihsm_pkcs11.conf
+
+ENV PKCS11_MODULE=/usr/lib/x86_64-linux-gnu/p11-kit-proxy.so
+ENV YUBIHSM_PKCS11_CONF=/etc/yubihsm_pkcs11.conf
+
+# Setup paths for openssl (found from running cst --version)
+RUN cd /opt && \
+    ln -s /usr/lib/ssl cst-ssl && \
+    cd cst-ssl && \
+    mkdir lib && \
+    cd lib && \
+    ln -s /usr/lib/x86_64-linux-gnu/engines-1.1 engines-1.1
+
+CMD [ "/bin/bash", "-c", "yubihsm-connector start && digsigserver --debug" ]

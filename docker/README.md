@@ -48,3 +48,44 @@ docker run -d \
 -p 9999:9999 \
 digsigserver:latest
 ```
+For NXP i.MX, the file containing your keys should be located in the home directory of the account used to run the containerized signing server.  
+Modify the mount point(s) to mount the keys as per the [Key file storage layout](../doc/imxsign.md#Keyfile-storage-layout), for example 
+if MACHINE=imx8mp and you are only doing i.MX signing :
+```
+docker run \
+--restart unless-stopped \
+-p 9999:9999 \
+--mount type=bind,source=$HOME/imx-cst-keys.tar.gz,target=/digsigserver/imx8mp/imxsign/imx-cst-keys.tar.gz,readonly \
+digsigserver:latest
+```
+
+# i.MX Signing with YubiHSM 2 hardware token
+
+## Building
+
+A separate dockerfile called Dockerfile.nxp-hsm is included here as it adds a lot of stuff to support pkcs11 and the YubiHSM 2 which 
+is not required if you are only doing Tegra signing, or i.MX signing using the keys/certs on the filesystem.
+
+The dockerfile pulls in any archives placed in nxp_tools and set these up. For example the archives *nxp_tools/cst-3.3.1.tgz* 
+and *nxp_tools/IMX_CST_TOOL_NEW.tgz* will result in version 3.3.1 and 3.3.2 of cst being made available for the imx signing endpoint.
+
+To build the image :
+
+    docker build . -f docker/Dockerfile.nxp-hsm -t digsigserver-nxp-hsm:latest
+
+## Running
+
+For i.MX signing with the YubiHSM 2, the imx-cst-keys.tar.gz file only needs to contain the crts/SRK_table_1_2_3_4.bin file. The USB bus 
+must be shared with the host. Also the YUBIHSM_PASSWORD environment variable is set to the password set for the YubiHSM 2 with the prefix "0001" 
+as this is the object id of the authentication object that pkcs11 uses to authenticate whith the token. So if the YubiHSM 2 password is 
+"password" and MACHINE is imx8mp, then the signing server would be started as follows :
+
+docker run -d \
+  --restart unless-stopped \
+  --privileged -v /dev/bus/usb:/dev/bus/usb \
+  --env "YUBIHSM_PASSWORD=0001password" \
+  -p 9999:9999 \
+  --mount type=bind,source=$HOME/imx-cst-keys.tar.gz,target=/digsigserver/imx8mp/imxsign/imx-cst-keys.tar.gz,readonly \
+  digsigserver-nxp-hsm:latest
+
+
