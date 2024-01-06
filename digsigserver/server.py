@@ -15,6 +15,7 @@ from digsigserver.signers.opteesign import OPTEESigner
 from digsigserver.signers.mendersign import MenderSigner
 from digsigserver.signers.swupdsign import SwupdateSigner
 from digsigserver.signers.rksign import RockchipSigner
+from digsigserver.signers.rkopteesign import RockchipOpteeSigner
 from digsigserver.signers.uefisign import UefiSigner
 from digsigserver.signers.ueficapsulesign import UefiCapsuleSigner
 from . import utils
@@ -270,6 +271,47 @@ def attach_endpoints(app: Sanic):
 
             if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, workdir, f):
                 result = await asyncio.get_running_loop().run_in_executor(None, s.sign)
+                if result:
+                    return await return_tarball(req, workdir)
+        return text("Signing error", status=500)
+
+    @app.post("/sign/rkoptee-tee")
+    async def sign_handler_rk_optee_tee(req: request):
+        f = validate_upload(req, "artifact")
+        if not f:
+            return text("Invalid artifact", status=400)
+        with tempfile.TemporaryDirectory() as workdir:
+            try:
+                s = RockchipOpteeSigner(app, workdir, req.form.get("machine"))
+            except ValueError:
+                return text("Invalid parameters", status=400)
+            with open(os.path.join(workdir, "tee.bin"), "wb") as artifact:
+                artifact.write(f.body)
+            outfile = tempfile.NamedTemporaryFile(delete=False)
+            outfile.close()
+            if await asyncio.get_running_loop().run_in_executor(None, s.resign_tee,
+                                                                os.path.join(workdir, "tee.bin"),
+                                                                outfile.name):
+                await return_file(req, outfile.name, "tee.bin.signed")
+                response = None
+            else:
+                response = text("Signing error", status=500)
+        os.unlink(outfile.name)
+        return response
+
+    @app.post("/sign/rkoptee-ta")
+    async def sign_handler_rk_optee_ta(req: request):
+        f = validate_upload(req, "artifact")
+        if not f:
+            return text("Invalid artifact", status=400)
+        with tempfile.TemporaryDirectory() as workdir:
+            try:
+                s = RockchipOpteeSigner(app, workdir, req.form.get("machine"))
+            except ValueError:
+                return text("Invalid parameters", status=400)
+
+            if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, workdir, f):
+                result = await asyncio.get_running_loop().run_in_executor(None, s.resign_tas)
                 if result:
                     return await return_tarball(req, workdir)
         return text("Signing error", status=500)
