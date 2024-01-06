@@ -14,6 +14,7 @@ class KeyFiles:
         'swupdate',
         'opteesign',
         'rksign',
+        'rkopteesign',
         'uefisign',
         'ueficapsulesign'
     ]
