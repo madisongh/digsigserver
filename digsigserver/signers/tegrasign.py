@@ -46,7 +46,7 @@ class TegraSigner (Signer):
                                       'Linux_for_Tegra')
         if not os.path.exists(self.toolspath):
             raise ValueError("no tools available for soctype={} bspversion={}".format(soctype, bspversion))
-        bspmajor, bspminor = tuple([int(v) for v in bspversion.split('.')[0:2]])
+        bspmajor, bspminor, bspmaint = tuple([int(v) for v in bspversion.split('.')[0:3]])
         self.bspmajor = bspmajor
         if soctype == 'tegra210':
             self.tegrasign_v3 = False
@@ -64,10 +64,13 @@ class TegraSigner (Signer):
                 self.scripts.append(os.path.join('bootloader', 'nvflashxmlparse'))
         else:
             self.scripts.append(os.path.join('bootloader', 'rollback', 'rollback_parser.py'))
+            if bspmajor == 32 and (bspminor > 7 or (bspminor == 7 and bspmaint >= 4)):
+                self.scripts.append(os.path.join('bootloader', 'rewrite-tegraflash-args'))
         if self.tegrasign_v3:
             self.scripts += self.tegrasign_v3_scripts + self.tegrasign_v3_support
         elif bspmajor > 32 or (bspmajor == 32 and bspminor >= 6):
             self.scripts += self.tegrasign_v3_support
+
         if bspmajor >= 35:
             self.scripts += self.r35_and_later
         self.soctype = soctype
