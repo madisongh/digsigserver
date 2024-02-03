@@ -1,6 +1,7 @@
 import os
 import copy
 import shutil
+from typing import Optional
 
 from digsigserver.signers import Signer
 
@@ -12,6 +13,7 @@ class RockchipSigner (Signer):
 
     keytag = 'rksign'
     supported_soctypes = ['rk3588', 'rk3566', 'rk3568']
+    fit_image_output_files = ['fitImage', 'uboot.dtb']
     # These tools must be copied into the local working directory.  The setting.ini
     # file gets modified by rk_sign_tool.
     rkbin_tools_files = ['boot_merger', 'rk_sign_tool', 'setting.ini']
@@ -52,12 +54,19 @@ class RockchipSigner (Signer):
             shutil.copyfile(src, dest)
             shutil.copymode(src, dest)
 
-    def sign(self, artifact_type: str, burn_key_hash: bool, infile: str, outfile: str) -> bool:
+    def sign(self, artifact_type: str, burn_key_hash: bool, infile: Optional[str], outfile: Optional[str],
+             external_data_offset: Optional[str]) -> bool:
         private_key = self.keys.get('dev.key')
+        # mkimage requires this, even if not used
+        cert = self.keys.get('dev.crt')
         result = False
-        if artifact_type == "fit-data":
-            result = self.run_command(['openssl', 'dgst', '-sha256', '-sign', private_key,
-                                       '-sigopt', 'rsa_padding_mode:pss', '-out', outfile, infile])
+        if artifact_type == "fit-image":
+            env = self._prepare_path()
+            cmd = ['mkimage', '-f', 'fit.its', '-E']
+            if external_data_offset:
+                cmd += ['-p', external_data_offset]
+            cmd += ['-k', os.path.dirname(private_key), '-K', 'uboot.dtb', '-r', 'fitImage']
+            result = self.run_command(cmd , env=env)
         elif artifact_type in ["idblock", "usbloader"]:
             public_key = self.keys.get('dev.pubkey')
             self._prepare_local_toolsdir()

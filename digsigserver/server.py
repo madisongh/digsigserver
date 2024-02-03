@@ -82,10 +82,11 @@ async def return_file(req: request, filename: str, return_filename: str):
     await response.eof()
 
 
-async def return_tarball(req: request, workdir: str, return_filename: str = "signed-artifact.tar.gz"):
+async def return_tarball(req: request, workdir: str, return_filename: str = "signed-artifact.tar.gz",
+                         files_to_return: Optional[list] = None):
     outfile = tempfile.NamedTemporaryFile(delete=False)
     outfile.close()
-    if utils.repack_files(workdir, outfile.name):
+    if utils.repack_files(workdir, outfile.name, file_list=files_to_return):
         await return_file(req, outfile.name, return_filename)
         response = None
     else:
@@ -135,18 +136,29 @@ def attach_endpoints(app: Sanic):
 
             artifact_type = req.form.get("artifact_type").lower()
             burn_key_hash = utils.to_boolean(req.form.get("burn_key_hash", "no"))
-            if artifact_type not in ["fit-data", "idblock", "usbloader"]:
+            if artifact_type not in ["fit-image", "idblock", "usbloader"]:
                 return text("Invalid artifact type", status=400)
-            with open(os.path.join(workdir, "artifact"), "wb") as artifact:
-                artifact.write(f.body)
-            outfile = tempfile.NamedTemporaryFile(delete=False)
-            outfile.close()
-            if await asyncio.get_running_loop().run_in_executor(None, s.sign, artifact_type,
-                                                                burn_key_hash, artifact.name, outfile.name):
-                await return_file(req, outfile.name, "artifact.signed")
-                response = None
+            if artifact_type == "fit-image":
+                external_data_offset = req.form.get("external_data_offset", "")
+                if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files,
+                                                                    workdir, f):
+                    if await asyncio.get_running_loop().run_in_executor(None, s.sign, artifact_type,
+                                                                        burn_key_hash, None, None, external_data_offset):
+                        await return_tarball(req, workdir, s.fit_image_output_files)
+                        response = None
+                    else:
+                        response = text("Signing error", status=500)
             else:
-                response = text("Signing error", status=500)
+                with open(os.path.join(workdir, "artifact"), "wb") as artifact:
+                    artifact.write(f.body)
+                outfile = tempfile.NamedTemporaryFile(delete=False)
+                outfile.close()
+                if await asyncio.get_running_loop().run_in_executor(None, s.sign, artifact_type,
+                                                                burn_key_hash, artifact.name, outfile.name, None):
+                    await return_file(req, outfile.name, "artifact.signed")
+                    response = None
+                else:
+                    response = text("Signing error", status=500)
         return response
 
     @app.post("/sign/imx")
