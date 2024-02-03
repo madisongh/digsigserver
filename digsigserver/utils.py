@@ -18,9 +18,11 @@ def extract_files(workdir: str, f: request.File) -> bool:
     return True
 
 
-def repack_files(workdir: str, outfile: str) -> bool:
+def repack_files(workdir: str, outfile: str, file_list: Optional[list] = None) -> bool:
+    if file_list is None:
+        file_list = ['.']
     try:
-        subprocess.run(['tar', '-c', '-z', '-v', '-f', outfile, '.'],
+        subprocess.run(['tar', '-c', '-z', '-v', '-f', outfile] + file_list,
                        stdin=subprocess.DEVNULL, check=True,
                        capture_output=True, cwd=workdir)
     except subprocess.CalledProcessError as e:
