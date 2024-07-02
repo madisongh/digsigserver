@@ -54,12 +54,19 @@ Expected parameters:
 Response: signed binary/binaries
 
 For the `fit-image` signing, the input data is expected to be a gzip-compressed tarball
-containing two files: the FIT image to be re-signed, called `fitImage`, and the
-device tree binary file where the public key information should be replaced, called
-`uboot.dtb`.  Note that this is a re-signing operation: you should enable signing
-during the build using a randomly-generated RSA keypair, then send the already-signed
-FIT and DTB over to have them re-signed with the production key.  The `external_data_offset`
-parameter should be included only for kernel FIT signing.
+containing:
+
+* One or both of
+    * `fitImage`: the FIT image output to be re-signed
+    * `fit.its`: the FIT image source
+* Optionally
+    * `uboot.dtb`: the device tree binary file where the public key information should be replaced
+
+Note that if `fit.its` is not present, this is a re-signing operation: you should
+enable signing during the build using a randomly-generated RSA keypair, then
+send the already-signed FIT and DTB over to have them re-signed with the
+production key.  The `external_data_offset` parameter should be included only
+for kernel FIT signing.
 
 Output from `fit-image` signing is a gzip-compressed tarball containing the updated
 `fitImage` and `uboot.dtb` files.

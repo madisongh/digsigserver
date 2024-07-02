@@ -62,10 +62,16 @@ class RockchipSigner (Signer):
         result = False
         if artifact_type == "fit-image":
             env = self._prepare_path()
-            cmd = ['mkimage', '-f', 'fit.its', '-E']
+            cmd = ['mkimage']
+            if os.path.exists(os.path.join(self.workdir, 'fit.its')):
+                cmd += ['-f', 'fit.its', '-E']
+            else:
+                cmd += ['-F']
+            if os.path.exists(os.path.join(self.workdir, 'uboot.dtb')):
+                cmd += ['-K', 'uboot.dtb']
             if external_data_offset:
                 cmd += ['-p', external_data_offset]
-            cmd += ['-k', os.path.dirname(private_key), '-K', 'uboot.dtb', '-r', 'fitImage']
+            cmd += ['-k', os.path.dirname(private_key), '-r', 'fitImage']
             result = self.run_command(cmd , env=env)
         elif artifact_type in ["idblock", "usbloader"]:
             public_key = self.keys.get('dev.pubkey')
