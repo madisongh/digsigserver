@@ -66,6 +66,22 @@ docker run \
 digsigserver:latest
 ```
 
+For Rockchip, the machine-specific key directory should be mounted to `/digsigserver/${machine}` per the [Key file storage layout](../doc/rksign.md#Keyfile-storage-layout), for example :
+```
+$HOME/mymachine/
+└── rksign
+    ├── dev.crt
+    ├── dev.key
+    └── dev.pubkey
+```
+```
+docker run \
+--restart unless-stopped \
+-p 9999:9999 \
+--mount type=bind,source=$HOME/mymachine,target=/digsigserver/mymachine,readonly \
+digsigserver:latest
+```
+
 # i.MX Signing with YubiHSM 2 hardware token
 
 See [i.MX Signing Using a YubiHSM 2 Hardware Token](../doc/imxsign-yubihsm.md) for details on how to set up the YubiHSM 2 
