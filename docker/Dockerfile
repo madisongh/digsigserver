@@ -1,6 +1,7 @@
 FROM l4t-release:32.5.2 AS l4t-32.5.2
 FROM l4t-release:32.7.4 AS l4t-32.7.4
 FROM l4t-release:35.4.1 AS l4t-35.4.1
+FROM l4t-release:35.5.0 AS l4t-35.5.0
 
 FROM ubuntu:18.04
 
@@ -30,6 +31,7 @@ WORKDIR ${DIGSIGSERVER}
 COPY --from=l4t-32.5.2 /opt/nvidia /opt/nvidia
 COPY --from=l4t-32.7.4 /opt/nvidia /opt/nvidia
 COPY --from=l4t-35.4.1 /opt/nvidia /opt/nvidia
+COPY --from=l4t-35.5.0 /opt/nvidia /opt/nvidia
 
 COPY digsigserver ${DIGSIGSERVER}/digsigserver
 COPY requirements.txt ${DIGSIGSERVER}
