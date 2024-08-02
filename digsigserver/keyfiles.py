@@ -16,7 +16,8 @@ class KeyFiles:
         'rksign',
         'rkopteesign',
         'uefisign',
-        'ueficapsulesign'
+        'ueficapsulesign',
+        'ekbsign'
     ]
 
     def __init__(self, app: Sanic, signtype: str, machine_or_distro: str):

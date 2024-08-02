@@ -31,6 +31,7 @@ class TegraSigner (Signer):
                      os.path.join('bootloader', 't234.py'),
                      os.path.join('bootloader', 'ed25519.py'),
                      os.path.join('bootloader', 'tegrasign_v3_hsm.py'),
+                     os.path.join('bootloader', 'tegrasign_v3_oemkey.yaml'),
                      os.path.join('bootloader', 'tegraopenssl'),
                      os.path.join('bootloader', 'pyfdt')]
 
