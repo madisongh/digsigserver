@@ -237,6 +237,7 @@ def attach_endpoints(app: Sanic):
                 response = None
             else:
                 response = text("Signing error", status=500)
+        os.unlink(outfile.name)
         return response
 
     @app.post("/sign/tegra/ueficapsule")
@@ -268,6 +269,7 @@ def attach_endpoints(app: Sanic):
                 response = None
             else:
                 response = text("Signing error", status=500)
+        os.unlink(outfile.name)
         return response
 
     @app.post("/sign/optee")
