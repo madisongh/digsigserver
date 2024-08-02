@@ -5,7 +5,8 @@ RUN apt-get update && apt-get install -y \
   wget \
   && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --branch kirkstone https://github.com/OE4T/meta-tegra.git meta-tegra-kirkstone
+RUN git clone --branch kirkstone https://github.com/OE4T/meta-tegra.git meta-tegra-kirkstone \
+&& cd meta-tegra-kirkstone && git checkout -b new_branch f8cb5c6ad2617755f5cb74f85a1b0b2cd6380f6c
 
 RUN mkdir -p /opt/nvidia/L4T-35.4.1-tegra234
 RUN wget -q -O - https://developer.nvidia.com/downloads/embedded/l4t/r35_release_v4.1/release/jetson_linux_r35.4.1_aarch64.tbz2 | \
