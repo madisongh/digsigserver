@@ -23,7 +23,9 @@ RUN cd meta-tegra-kirkstone/recipes-bsp/tegra-binaries/tegra-helper-scripts && \
     install -m 0755 tegra234-flash-helper.sh ${TEGRA234_35_4_1_DIR}/bootloader/tegra234-flash-helper && \
     install -m 0755 tegra194-flash-helper.sh ${TEGRA186_35_4_1_DIR}/bootloader/tegra194-flash-helper && \
     install -m 0755 tegra-signimage-helper.sh ${TEGRA234_35_4_1_DIR}/tegra-signimage-helper && \
-    install -m 0755 tegra-signimage-helper.sh ${TEGRA186_35_4_1_DIR}/tegra-signimage-helper
+    install -m 0755 tegra-signimage-helper.sh ${TEGRA186_35_4_1_DIR}/tegra-signimage-helper && \
+    install -m 0755 nvflashxmlparse.py ${TEGRA234_35_4_1_DIR}/bootloader/nvflashxmlparse && \
+    install -m 0755 nvflashxmlparse.py ${TEGRA186_35_4_1_DIR}/bootloader/nvflashxmlparse
 
 RUN patch -p1 --directory=${TEGRA234_35_4_1_DIR} < meta-tegra-kirkstone/recipes-bsp/tegra-binaries/files/0013-Fix-location-of-bsp_version-file-in-l4t_bup_gen.func.patch
 RUN patch -p1 --directory=${TEGRA234_35_4_1_DIR} < meta-tegra-kirkstone/recipes-bsp/tegra-binaries/files/0014-odmsign.func-fix-ODMDATA-and-overlay-DTB-handling-fo.patch
