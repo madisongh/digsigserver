@@ -18,6 +18,7 @@ from digsigserver.signers.rksign import RockchipSigner
 from digsigserver.signers.rkopteesign import RockchipOpteeSigner
 from digsigserver.signers.uefisign import UefiSigner
 from digsigserver.signers.ueficapsulesign import UefiCapsuleSigner
+from digsigserver.signers.ekbsign import EKBSigner
 from . import utils
 
 # Signing can take a loooong time, so set a more reasonable
@@ -377,3 +378,29 @@ def attach_endpoints(app: Sanic):
             if await asyncio.get_running_loop().run_in_executor(None, s.sign):
                 return text("Signing successful")
         return text("Signing error", status=500)
+
+
+    @app.post("/sign/tegra/ekb")
+    async def get_handler_ekb(req: request):
+        with tempfile.TemporaryDirectory() as workdir:
+            try:
+                s = EKBSigner(
+                    app,
+                    workdir,
+                    req.form.get("machine"),
+                    req.form.get("soctype"),
+                    req.form.get("bspversion"))
+            except ValueError:
+                return text("Invalid parameters", status=400)
+
+            outfile = tempfile.NamedTemporaryFile(delete=False)
+            outfile.close()
+            if await asyncio.get_running_loop().run_in_executor(None,
+                                                                s.generate_ekb,
+                                                                outfile.name):
+                await return_file(req, outfile.name, "ekb.img")
+                response = None
+            else:
+                response = text("Signing error", status=500)
+        os.unlink(outfile.name)
+        return response

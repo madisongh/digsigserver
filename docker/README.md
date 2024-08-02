@@ -45,6 +45,9 @@ docker run -d \
 --mount type=bind,source=$HOME/$SIGNING_KEYS/NewRoot.pub.pem,target=/digsigserver/$MACHINE/ueficapsulesign/trusted_public_cert.pem,readonly \
 --mount type=bind,source=$HOME/$SIGNING_KEYS/NewSub.pub.pem,target=/digsigserver/$MACHINE/ueficapsulesign/other_public_cert.pem,readonly \
 --mount type=bind,source=$HOME/$SIGNING_KEYS/NewCert.pem,target=/digsigserver/$MACHINE/ueficapsulesign/signer_private_cert.pem,readonly \
+--mount type=bind,source=$HOME/$SIGNING_KEYS/oemk1.key,target=/digsigserver/$MACHINE/ekbsign/oemk1.key,readonly \
+--mount type=bind,source=$HOME/$SIGNING_KEYS/fixed-vector,target=/digsigserver/$MACHINE/ekbsign/fixed-vector,readonly \
+--mount type=bind,source=$HOME/$SIGNING_KEYS/uefi-variable-authentication.key,target=/digsigserver/$MACHINE/ekbsign/uefi-variable-authentication.key,readonly \
 -p 9999:9999 \
 digsigserver:latest
 ```

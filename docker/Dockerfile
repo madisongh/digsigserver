@@ -21,7 +21,10 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
 
 RUN pip3 install --upgrade pip
 
-RUN pip3 install PyYAML
+RUN pip3 install \
+  PyYAML \
+  cryptograpy \
+  pycryptodome
 
 ENV DIGSIGSERVER=/digsigserver
 ENV DIGSIGSERVER_KEYFILE_URI=${DIGSIGSERVER}
