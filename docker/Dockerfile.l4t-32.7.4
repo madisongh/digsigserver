@@ -27,7 +27,8 @@ RUN cd meta-tegra-dunfell/recipes-bsp/tegra-binaries/tegra-helper-scripts && \
     install -m 0755 tegra194-flash-helper.sh ${TEGRA186_32_7_4_DIR}/bootloader/tegra194-flash-helper && \
     install -m 0755 tegra-signimage-helper.sh ${TEGRA210_32_7_4_DIR}/tegra-signimage-helper && \
     install -m 0755 tegra-signimage-helper.sh ${TEGRA186_32_7_4_DIR}/tegra-signimage-helper && \
-    install -m 0755 nvflashxmlparse.py ${TEGRA210_32_7_4_DIR}/bootloader/nvflashxmlparse
+    install -m 0755 nvflashxmlparse.py ${TEGRA210_32_7_4_DIR}/bootloader/nvflashxmlparse && \
+    install -m 0755 nvflashxmlparse.py ${TEGRA186_32_7_4_DIR}/bootloader/nvflashxmlparse
 
 RUN patch -p1 --directory=${TEGRA210_32_7_4_DIR} < meta-tegra-dunfell/recipes-bsp/tegra-binaries/files/0013-Fix-location-of-bsp_version-file-in-l4t_bup_gen.func.patch
 RUN patch -p1 --directory=${TEGRA186_32_7_4_DIR} < meta-tegra-dunfell/recipes-bsp/tegra-binaries/files/0013-Fix-location-of-bsp_version-file-in-l4t_bup_gen.func.patch

@@ -63,6 +63,7 @@ class TegraSigner (Signer):
             if bspmajor > 32 or (bspmajor == 32 and bspminor >= 6):
                 self.scripts.append(os.path.join('bootloader', 'nvflashxmlparse'))
         else:
+            self.scripts.append(os.path.join('bootloader', 'nvflashxmlparse'))
             self.scripts.append(os.path.join('bootloader', 'rollback', 'rollback_parser.py'))
             if bspmajor == 32 and (bspminor > 7 or (bspminor == 7 and bspmaint >= 4)):
                 self.scripts.append(os.path.join('bootloader', 'rewrite-tegraflash-args'))
