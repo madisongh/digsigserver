@@ -6,8 +6,10 @@ The [Dockerfile](Dockerfile) uses docker's multi-stage builds to support one or 
 
 From the top-level of the `digsigserver` repo build the L4T release container images for the releases you want to support.  Example:
 
-    $ docker build . -f docker/Dockerfile.l4t-32.7.4 -t l4t-release:32.7.4
-    $ docker build . -f docker/Dockerfile.l4t-35.4.1 -t l4t-release:35.4.1
+```
+docker build . -f docker/Dockerfile.l4t-32.7.4 -t l4t-release:32.7.4
+docker build . -f docker/Dockerfile.l4t-35.4.1 -t l4t-release:35.4.1
+```
 
 Include the approriate `FROM` and `COPY` statements in your `Dockerfile`.  Example:
 
@@ -23,7 +25,9 @@ COPY --from=l4t-35.4.1 /opt/nvidia /opt/nvidia
 
 Then build the signing server container image:
 
-    $ docker build . -f docker/Dockerfile -t digsigserver:latest
+```
+docker build . -f docker/Dockerfile -t digsigserver:latest
+```
 
 # Running
 
