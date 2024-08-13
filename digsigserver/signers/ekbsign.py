@@ -34,6 +34,23 @@ class EKBSigner (Signer):
             '-in_auth_key', uefi_variable_authentication_key,
             '-out', outfile
         ]
+
+        kernel_encryption_key = None
+        disk_encryption_key = None
+        try:
+            kernel_encryption_key = self.keys.get('kernel-encryption.key')
+        except FileNotFoundError:
+            pass
+        try:
+            disk_encryption_key = self.keys.get('disk-encryption.key')
+        except FileNotFoundError:
+            pass
+
+        if kernel_encryption_key is not None:
+            cmd += ['-in_sym_key', kernel_encryption_key]
+        if disk_encryption_key is not None:
+            cmd += ['-in_sym_key2', disk_encryption_key]
+
         result = self.run_command(cmd)
 
         return result
