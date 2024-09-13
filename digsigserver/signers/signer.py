@@ -33,6 +33,7 @@ class Signer:
             if cleanup:
                 self.keys.cleanup()
             logger.warning("signing error: {}".format(e.stderr))
+            logger.warning("stdout: {}".format(e.stdout))
             return False
         if cleanup:
             self.keys.cleanup()
