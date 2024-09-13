@@ -1,5 +1,6 @@
 import os
 import copy
+import re
 import shutil
 from typing import Optional
 from digsigserver.signers import Signer
@@ -102,12 +103,18 @@ class TegraSigner (Signer):
                 ignore_pat = shutil.ignore_patterns("__pycache__")
                 shutil.copytree(src, dest, ignore=ignore_pat)
             elif script.endswith('.py') and script in self.wrapped_scripts:
-                shutil.copyfile(src, dest + '.real')
-                shutil.copymode(src, dest + '.real')
-                with open(dest, 'w') as f:
-                    f.write('#!/bin/sh\npython2 {} "$@"\n'.format(dest + '.real'))
-                os.chmod(dest, 0o755)
-                logger.debug("Copy-wrapped {} -> {}".format(src, dest))
+                with open(src, 'r') as f:
+                    shebang = f.readline().rstrip()
+                    needs_wrapping = re.match(r'#!.*(python|python2)$', shebang) is not None
+                shutil.copyfile(src, dest + '.real' if needs_wrapping else dest)
+                shutil.copymode(src, dest + '.real' if needs_wrapping else dest)
+                if needs_wrapping:
+                    with open(dest, 'w') as f:
+                        f.write('#!/bin/sh\npython2 {} "$@"\n'.format(dest + '.real'))
+                    os.chmod(dest, 0o755)
+                    logger.debug("Copy-wrapped {} -> {}".format(src, dest))
+                else:
+                    logger.debug("Copied (non-wrapped) {} -> {}".format(src, dest))
             else:
                 shutil.copyfile(src, dest)
                 shutil.copymode(src, dest)
