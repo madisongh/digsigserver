@@ -96,7 +96,10 @@ class OPTEESigner (Signer):
                         self.keys.cleanup()
                         return False
                     os.remove(os.path.join(dirpath, file))
-                    os.remove(os.path.join(dirpath, uuid + ".ta-version"))
+                    try:
+                        os.remove(os.path.join(dirpath, uuid + ".ta-version"))
+                    except FileNotFoundError:
+                        pass
                     if not os.path.exists(os.path.join(dirpath, uuid + ".ta")):
                         logger.warning("TA signing succesful, but {}.ta file is missing".format(uuid))
         self.keys.cleanup()
