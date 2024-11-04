@@ -6,7 +6,8 @@ RUN apt-get update && apt-get install -y \
   wget \
   && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --branch kirkstone https://github.com/OE4T/meta-tegra.git meta-tegra-kirkstone
+RUN git clone --branch kirkstone https://github.com/OE4T/meta-tegra.git meta-tegra-kirkstone \
+&& cd meta-tegra-kirkstone && git checkout -b new_branch 2c95c68c214e6e17a270a923528f27cb6436000a
 
 RUN mkdir -p /opt/nvidia/L4T-35.5.0-tegra234 && \
     mkdir -p /opt/nvidia/L4T-35.5.0-tegra186
