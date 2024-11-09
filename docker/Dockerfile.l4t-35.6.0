@@ -1,0 +1,47 @@
+FROM ubuntu:18.04
+
+RUN apt-get update && apt-get install -y \
+  git \
+  python3-cryptography \
+  wget \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --branch scarthgap-l4t-r35.x https://github.com/OE4T/meta-tegra.git meta-tegra-scarthgap-l4t-r35.x 
+
+RUN mkdir -p /opt/nvidia/L4T-35.6.0-tegra234 && \
+    mkdir -p /opt/nvidia/L4T-35.6.0-tegra186
+
+RUN wget -q -O /opt/nvidia/l4t-release.tbz2 https://developer.nvidia.com/downloads/embedded/l4t/r35_release_v6.0/release/jetson_linux_r35.6.0_aarch64.tbz2
+
+RUN tar -xjf /opt/nvidia/l4t-release.tbz2 -C /opt/nvidia/L4T-35.6.0-tegra234 && \
+    tar -xjf /opt/nvidia/l4t-release.tbz2 -C /opt/nvidia/L4T-35.6.0-tegra186
+
+RUN rm /opt/nvidia/l4t-release.tbz2
+
+RUN wget -q -O /opt/nvidia/public_sources.tbz2 https://developer.nvidia.com/downloads/embedded/l4t/r35_release_v6.0/sources/public_sources.tbz2
+
+RUN tar -xjf /opt/nvidia/public_sources.tbz2 -C /opt/nvidia/L4T-35.6.0-tegra234 Linux_for_Tegra/source/public/nvidia-jetson-optee-source.tbz2 && \
+    tar -xjf /opt/nvidia/L4T-35.6.0-tegra234/Linux_for_Tegra/source/public/nvidia-jetson-optee-source.tbz2 -C /opt/nvidia/L4T-35.6.0-tegra234/Linux_for_Tegra/source/public
+
+RUN tar -xjf /opt/nvidia/public_sources.tbz2 -C /opt/nvidia/L4T-35.6.0-tegra186 Linux_for_Tegra/source/public/nvidia-jetson-optee-source.tbz2 && \
+    tar -xjf /opt/nvidia/L4T-35.6.0-tegra186/Linux_for_Tegra/source/public/nvidia-jetson-optee-source.tbz2 -C /opt/nvidia/L4T-35.6.0-tegra186/Linux_for_Tegra/source/public
+
+RUN rm /opt/nvidia/public_sources.tbz2 && \
+    rm /opt/nvidia/L4T-35.6.0-tegra234/Linux_for_Tegra/source/public/nvidia-jetson-optee-source.tbz2 && \
+    rm /opt/nvidia/L4T-35.6.0-tegra186/Linux_for_Tegra/source/public/nvidia-jetson-optee-source.tbz2
+
+ARG TEGRA234_35_6_0_DIR=/opt/nvidia/L4T-35.6.0-tegra234/Linux_for_Tegra
+ARG TEGRA186_35_6_0_DIR=/opt/nvidia/L4T-35.6.0-tegra186/Linux_for_Tegra
+
+RUN cd meta-tegra-scarthgap-l4t-r35.x/recipes-bsp/tegra-binaries/tegra-helper-scripts && \
+    install -m 0755 tegra-flash-helper.sh ${TEGRA234_35_6_0_DIR}/bootloader/tegra234-flash-helper && \
+    install -m 0755 tegra-flash-helper.sh ${TEGRA186_35_6_0_DIR}/bootloader/tegra194-flash-helper && \
+    install -m 0755 tegra-signimage-helper.sh ${TEGRA234_35_6_0_DIR}/tegra-signimage-helper && \
+    install -m 0755 tegra-signimage-helper.sh ${TEGRA186_35_6_0_DIR}/tegra-signimage-helper && \
+    install -m 0755 nvflashxmlparse.py ${TEGRA234_35_6_0_DIR}/bootloader/nvflashxmlparse && \
+    install -m 0755 nvflashxmlparse.py ${TEGRA186_35_6_0_DIR}/bootloader/nvflashxmlparse
+
+RUN patch -p1 --directory=${TEGRA234_35_6_0_DIR} < meta-tegra-scarthgap-l4t-r35.x/recipes-bsp/tegra-binaries/files/0013-Fix-location-of-bsp_version-file-in-l4t_bup_gen.func.patch
+RUN patch -p1 --directory=${TEGRA234_35_6_0_DIR} < meta-tegra-scarthgap-l4t-r35.x/recipes-bsp/tegra-binaries/files/0014-odmsign.func-fix-ODMDATA-and-overlay-DTB-handling-fo.patch
+RUN patch -p1 --directory=${TEGRA186_35_6_0_DIR} < meta-tegra-scarthgap-l4t-r35.x/recipes-bsp/tegra-binaries/files/0013-Fix-location-of-bsp_version-file-in-l4t_bup_gen.func.patch
+RUN patch -p1 --directory=${TEGRA186_35_6_0_DIR} < meta-tegra-scarthgap-l4t-r35.x/recipes-bsp/tegra-binaries/files/0014-odmsign.func-fix-ODMDATA-and-overlay-DTB-handling-fo.patch
