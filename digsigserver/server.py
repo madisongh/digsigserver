@@ -19,6 +19,7 @@ from digsigserver.signers.rkopteesign import RockchipOpteeSigner
 from digsigserver.signers.uefisign import UefiSigner
 from digsigserver.signers.ueficapsulesign import UefiCapsuleSigner
 from digsigserver.signers.ekbsign import EKBSigner
+from digsigserver.signers.fitimagesign import FitImageSigner
 from . import utils
 
 # Signing can take a loooong time, so set a more reasonable
@@ -187,6 +188,35 @@ def attach_endpoints(app: Sanic):
 
             if await asyncio.get_running_loop().run_in_executor(None, s.sign, outfile.name):
                 await return_file(req, outfile.name, "artifact.signed")
+                response = None
+            else:
+                response = text("Signing error", status=500)
+        return response
+
+    @app.post("/sign/fitimage")
+    async def sign_handler_fitimage(req: request):
+        f = validate_upload(req, "artifact")
+        if not f:
+            return text("Invalid artifact", status=400)
+        with tempfile.TemporaryDirectory() as workdir:
+            try:
+                s = FitImageSigner(app, workdir)
+            except ValueError:
+                return text("Invalid parameters", status=400)
+
+            with open(os.path.join(workdir, "artifact"), "wb") as artifact:
+                artifact.write(f.body)
+
+            outfile = tempfile.NamedTemporaryFile(delete=False)
+            outfile.close()
+            if await asyncio.get_running_loop().run_in_executor(None, s.sign,
+                                   artifact.name,
+                                   None,
+                                   req.form.get("external_data_offset"),
+                                   req.form.get("mark_required"),
+                                   req.form.get("algo"),
+                                   req.form.get("keyname")):
+                await return_file(req, artifact.name, "artifact.signed")
                 response = None
             else:
                 response = text("Signing error", status=500)
