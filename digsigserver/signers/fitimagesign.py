@@ -6,7 +6,6 @@ from digsigserver.signers import Signer
 from sanic import Sanic
 from sanic.log import logger
 
-
 class FitImageSigner (Signer):
 
     keytag = 'fitimagesign'
@@ -30,13 +29,13 @@ class FitImageSigner (Signer):
         private_key = self.keys.get("{}.key".format(keyname))
         env = self._prepare_path()
         cmd = [ 'mkimage', '-F', '-k', os.path.dirname(private_key) ]
-        if external_data_offset != None:
+        if external_data_offset:
             cmd += [ '-p', external_data_offset ]
-        if mark_required != None:
+        if mark_required:
             cmd += [ '-r' ]
-        if dtb != None:
+        if dtb:
             cmd += [ '-K', dtb ]
-        if algo != None:
+        if algo:
             cmd +=[ '-o', algo ]
 
         cmd += [ fitimage ]
