@@ -19,6 +19,8 @@ class EKBSigner (Signer):
                                       'Linux_for_Tegra')
         if not os.path.exists(self.toolspath):
             raise ValueError('no tools available for soctype={} bspversion={}'.format(soctype, bspversion))
+        verparts = bspversion.split('.')
+        self.bsp_major_version = int(verparts[0])
         self.soctype = soctype
         super().__init__(app, workdir, machine)
 
@@ -30,10 +32,12 @@ class EKBSigner (Signer):
             'python3', self.toolspath + '/source/public/optee/samples/hwkey-agent/host/tool/gen_ekb/gen_ekb.py',
             '-chip', 't234' if self.soctype == 'tegra234' else 't194',
             '-oem_k1_key', oem_k1_key,
-            '-fv', fixed_vector,
             '-in_auth_key', uefi_variable_authentication_key,
             '-out', outfile
         ]
+
+        if self.bsp_major_version < 36:
+            cmd += ['-fv', fixed_vector]
 
         kernel_encryption_key = None
         disk_encryption_key = None
