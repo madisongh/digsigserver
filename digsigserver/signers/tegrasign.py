@@ -32,7 +32,6 @@ class TegraSigner (Signer):
                      os.path.join('bootloader', 't234.py'),
                      os.path.join('bootloader', 'ed25519.py'),
                      os.path.join('bootloader', 'tegrasign_v3_hsm.py'),
-                     os.path.join('bootloader', 'tegrasign_v3_oemkey.yaml'),
                      os.path.join('bootloader', 'tegraopenssl'),
                      os.path.join('bootloader', 'pyfdt')]
 
@@ -73,6 +72,11 @@ class TegraSigner (Signer):
             self.scripts += self.tegrasign_v3_scripts + self.tegrasign_v3_support
         elif bspmajor > 32 or (bspmajor == 32 and bspminor >= 6):
             self.scripts += self.tegrasign_v3_support
+
+        if bspmajor == 35:
+            self.scripts.append(os.path.join('bootloader', 'tegrasign_v3_oemkey.yaml'))
+        elif bspmajor >= 36:
+            self.scripts.append(os.path.join('bootloader', 'tegrasign_v3_oemkey_t234.yaml'))
 
         if bspmajor >= 35:
             self.scripts += self.r35_and_later
