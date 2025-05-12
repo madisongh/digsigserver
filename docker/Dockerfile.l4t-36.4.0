@@ -6,7 +6,8 @@ RUN apt-get update && apt-get install -y \
   wget \
   && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --branch scarthgap https://github.com/OE4T/meta-tegra.git meta-tegra-scarthgap
+RUN git clone --branch scarthgap https://github.com/OE4T/meta-tegra.git meta-tegra-scarthgap && cd meta-tegra-scarthgap && git checkout e1c238e20c83821b47547cf5956914f43007471e
+
 
 RUN mkdir -p /opt/nvidia/L4T-36.4.0-tegra234
 
