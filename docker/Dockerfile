@@ -5,6 +5,7 @@ FROM l4t-release:35.5.0 AS l4t-35.5.0
 FROM l4t-release:35.6.0 AS l4t-35.6.0
 FROM l4t-release:36.4.0 AS l4t-36.4.0
 FROM l4t-release:36.4.3 AS l4t-36.4.3
+FROM l4t-release:36.4.4 AS l4t-36.4.4
 FROM ubuntu:18.04 as mkimage
 
 # Dependencies for building u-boot tools
@@ -58,6 +59,7 @@ COPY --from=l4t-35.5.0 /opt/nvidia /opt/nvidia
 COPY --from=l4t-35.6.0 /opt/nvidia /opt/nvidia
 COPY --from=l4t-36.4.0 /opt/nvidia /opt/nvidia
 COPY --from=l4t-36.4.3 /opt/nvidia /opt/nvidia
+COPY --from=l4t-36.4.4 /opt/nvidia /opt/nvidia
 # Rockchip
 ARG ROCKCHIP_TOOLS_REPO_URL=https://github.com/rockchip-linux/rkbin/raw/829d7a6a2272938aac67dfe9f807277fa617809b/
 ENV DIGSIGSERVER_RK_TOOLS_PATH=/opt
