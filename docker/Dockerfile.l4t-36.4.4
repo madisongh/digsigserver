@@ -10,13 +10,13 @@ RUN git clone --branch scarthgap https://github.com/OE4T/meta-tegra.git meta-teg
 
 RUN mkdir -p /opt/nvidia/L4T-36.4.4-tegra234
 
-RUN wget -q -O /opt/nvidia/l4t-release.tbz2 https://developer.nvidia.com/downloads/embedded/l4t/r36_release_v4.3/release/Jetson_Linux_R36.4.4_aarch64.tbz2
+RUN wget -q -O /opt/nvidia/l4t-release.tbz2 https://developer.nvidia.com/downloads/embedded/l4t/r36_release_v4.4/release/Jetson_Linux_R36.4.4_aarch64.tbz2
 
 RUN tar -xjf /opt/nvidia/l4t-release.tbz2 -C /opt/nvidia/L4T-36.4.4-tegra234
 
 RUN rm /opt/nvidia/l4t-release.tbz2
 
-RUN wget -q -O /opt/nvidia/public_sources.tbz2 https://developer.nvidia.com/downloads/embedded/l4t/r36_release_v4.3/sources/public_sources.tbz2
+RUN wget -q -O /opt/nvidia/public_sources.tbz2 https://developer.nvidia.com/downloads/embedded/l4t/r36_release_v4.4/sources/public_sources.tbz2
 
 RUN tar -xjf /opt/nvidia/public_sources.tbz2 -C /opt/nvidia/L4T-36.4.4-tegra234 Linux_for_Tegra/source/nvidia-jetson-optee-source.tbz2 && \
     mkdir /opt/nvidia/L4T-36.4.4-tegra234/Linux_for_Tegra/source/public && \
