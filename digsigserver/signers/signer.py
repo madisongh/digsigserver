@@ -10,10 +10,14 @@ class Signer:
 
     keytag = 'Unknown'
 
-    def __init__(self, app: Sanic, workdir: str, key_selector: str):
+    def __init__(self, app: Sanic, workdir: str, key_selector: Optional[str] = None,
+                 backend: Optional[str] = None, load_keys: bool = True):
         self.app = app
         self.workdir = workdir
-        self.keys = KeyFiles(app, self.keytag, key_selector)
+        self.backend = backend or 'ssl'
+        self.keys = None
+        if load_keys:
+            self.keys = KeyFiles(app, self.keytag, key_selector)
 
     def sign(self, *args) -> bool:
         raise RuntimeError("unimplemented sign method")
@@ -30,11 +34,11 @@ class Signer:
             logger.debug("stdout: {}".format(proc.stdout))
             logger.debug("stderr: {}".format(proc.stderr))
         except subprocess.CalledProcessError as e:
-            if cleanup:
+            if cleanup and self.keys:
                 self.keys.cleanup()
             logger.warning("signing error: {}".format(e.stderr))
             logger.warning("stdout: {}".format(e.stdout))
             return False
-        if cleanup:
+        if cleanup and self.keys:
             self.keys.cleanup()
         return True

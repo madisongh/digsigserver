@@ -11,8 +11,7 @@ class SwupdateSigner(Signer):
         if not signcmd:
             raise RuntimeError('no openssl command')
         self.signcmd = signcmd
-        self.backend = backend
-        super().__init__(app, workdir, distro)
+        super().__init__(app, workdir, distro, backend, load_keys=backend != 'pkcs11')
 
     def sign(self, method: str, sw_description: str, outfile: str, key_uri: str = None, cert_uri: str = None) -> bool:
         match (method, self.backend):
@@ -32,11 +31,15 @@ class SwupdateSigner(Signer):
             case ("RSA", "pkcs11"):
                 if not key_uri:
                     raise RuntimeError('Key URI missing for RSA signing with PKCS#11 backend')
-                raise NotImplementedError('RSA signing with PKCS#11 backend not implemented yet')
+                cmd = [self.signcmd, 'dgst', '-sha256', '-engine', 'pkcs11',
+                       '-keyform', 'ENGINE', '-sign', key_uri, '-out', outfile, sw_description]
             case ("CMS", "pkcs11"):
                 if not key_uri or not cert_uri:
                     raise RuntimeError('Key URI or cert URI missing for CMS signing with PKCS#11 backend')
-                # TODO
+                cmd = [self.signcmd, 'cms', '-sign', '-engine', 'pkcs11',
+                       '-keyform', 'ENGINE', '-in', sw_description, '-out', outfile,
+                       '-signer', cert_uri, '-inkey', key_uri, '-outform', 'DER',
+                       '-nosmimecap', '-binary']
             case _:
               raise RuntimeError('Unrecognized signing method {} or backend {} allowed: RSA, CMS with ssl or pkcs11'.format(method, self.backend))
 

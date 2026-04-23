@@ -22,8 +22,7 @@ class IMXSigner (Signer):
             raise ValueError("no tools available for cstversion={}".format(cstversion))
         self.soctype = soctype
         self.machine = machine
-        self.backend = backend
-        super().__init__(app, workdir, machine)
+        super().__init__(app, workdir, machine, backend)
 
     def _prepare_path(self) -> dict:
         env = dict(copy.deepcopy(os.environ))
