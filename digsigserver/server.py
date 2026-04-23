@@ -200,7 +200,7 @@ def attach_endpoints(app: Sanic):
             return text("Invalid artifact", status=400)
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = FitImageSigner(app, workdir)
+                s = FitImageSigner(app, workdir, req.form.get("backend"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 

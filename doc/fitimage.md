@@ -24,6 +24,7 @@ Optional parameters:
 * `mark_required=<any value>` - if this parameter exists the key will be marked as required
 * `algo=<signing algorithm>` - customize the signing algorithm
 * `keyname=<name of the key to use>` - specify a keyname other than `dev`
+* `backend=<backend-type>` - backend can be pkcs11 or ssl, defaults to ssl if ommitted
 
 Response: signed binary
 
