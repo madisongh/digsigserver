@@ -364,17 +364,25 @@ def attach_endpoints(app: Sanic):
     @app.post("/sign/swupdate")
     async def sign_handler_swupdate(req: request):
         distro = req.form.get("distro")
-        if not distro:
+        backend = req.form.get("backend")
+        if not distro and (not backend or backend != "pkcs11"):
             return text("Distro name missing", status=400)
         method = req.form.get("method")
         if not method:
             method = "RSA"
+        key_uri = req.form.get("key-uri")
+        cert_uri = req.form.get("cert-uri")
+        if backend == "pkcs11":
+          if method == "RSA" and not key_uri:
+            return text("Key URI missing for PKCS#11 backend", status=400)
+          elif method == "CMS" and (not key_uri or not cert_uri):
+            return text("Key URI or cert URI missing for CMS signing with PKCS#11 backend", status=400)  
         f = validate_upload(req, "sw-description")
         if not f:
             return text("Invalid sw-description", status=400)
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = SwupdateSigner(app, workdir, distro)
+                s = SwupdateSigner(app, workdir, distro, backend)
             except ValueError:
                 logger.info("could not init signer")
                 return text("Invalid parameters", status=400)
@@ -384,7 +392,7 @@ def attach_endpoints(app: Sanic):
                 infile.write(f.body.decode('UTF-8'))
             if await asyncio.get_running_loop().run_in_executor(None, s.sign,
                                                                 method, "sw-description",
-                                                                outfile.name):
+                                                                outfile.name, key_uri, cert_uri):
                 await return_file(req, outfile.name, "sw-description.sig")
                 response = None
             else:
