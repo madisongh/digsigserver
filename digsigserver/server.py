@@ -39,28 +39,7 @@ Actual initialization happens here
 """
 
 
-def load_dotenv(path: str = '.env') -> None:
-    if not os.path.exists(path):
-        return
-    with open(path, mode='r', encoding='utf-8') as f:
-        for raw_line in f:
-            line = raw_line.strip()
-            if not line or line.startswith('#'):
-                continue
-            if line.startswith('export '):
-                line = line[7:].lstrip()
-            key, sep, value = line.partition('=')
-            if not sep:
-                continue
-            key = key.strip()
-            value = value.strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
-                value = value[1:-1]
-            os.environ.setdefault(key, value)
-
-
 def create_app() -> Sanic:
-    load_dotenv(os.environ.get('DIGSIGSERVER_DOTENV', '.env'))
     app = Sanic(name='digsigserver', env_prefix='DIGSIGSERVER_')
     app.config.update_config(CodesignSanicDefaults)
     app.config.load_environment_vars(prefix='DIGSIGSERVER_')
@@ -129,10 +108,6 @@ async def return_tarball(req: request, workdir: str, return_filename: str = "sig
 
 
 def attach_endpoints(app: Sanic):
-    @app.get("/health")
-    async def health_handler(req: request):
-        return text("OK")
-
     @app.post("/sign/tegra")
     async def sign_handler_tegra(req: request):
         f = validate_upload(req, "artifact")
