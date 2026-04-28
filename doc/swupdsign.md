@@ -31,10 +31,9 @@ Expected parameters:
 * `sw-description=<body>` - the contents of the `sw-description` file to have signatures included
 
 Optional parameters:
-* `method=<method>` - may be `RSA` or `CMS` defults to `RSA` if ommited
-* `backend=<backend-type>` - backend can be pkcs11 or ssl, defaults to ssl if ommitted
-* `key-uri=<pkcs11 key uri>` - key uri required for `backend=pkcs11`
-* `cert-uri=<pkcs11 key uri>` - key uri required for `backend=pkcs11` & `method=CMS`
+* `method=<method>` - may be `RSA` or `CMS`, defaults to `RSA` if omitted
+* `backend=<backend-type>` - backend can be `pkcs11` or `ssl`, defaults to `ssl` if omitted
+* `key-uri=<pkcs11 key uri>` - key URI required for `backend=pkcs11`
 
 Response: a `sw-description` file with signatures inserted
 

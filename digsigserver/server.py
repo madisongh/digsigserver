@@ -233,9 +233,15 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
+        backend = req.form.get("backend")
+        keyname = req.form.get("keyname")
+        if backend == "pkcs11" and not keyname:
+            return text("Key URI missing for PKCS#11 backend", status=400)
+        if not keyname:
+            keyname = "dev"
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = FitImageSigner(app, workdir, req.form.get("backend"))
+                s = FitImageSigner(app, workdir, backend)
             except ValueError:
                 return text("Invalid parameters", status=400)
 
@@ -249,8 +255,9 @@ def attach_endpoints(app: Sanic):
                                    None,
                                    req.form.get("external_data_offset"),
                                    req.form.get("mark_required"),
-                                   req.form.get("algo"),
-                                   req.form.get("keyname")):
+                                    req.form.get("algo"),
+                                   keyname,
+                                   req.form.get("comment")):
                 await return_file(req, artifact.name, "artifact.signed")
                 response = None
             else:
