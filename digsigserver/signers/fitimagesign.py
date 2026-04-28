@@ -28,6 +28,7 @@ class FitImageSigner (Signer):
              keyname: str = "dev.key") -> bool:
         env = self._prepare_path()
         if self.backend == "pkcs11":
+          keyname = keyname.replace('pin-value=password', 'pin-value=' + self.app.config.get('YUBIHSM_PASSWORD'))
           cmd = [ 'mkimage', '-E', '-F', '-N', 'pkcs11', '-k', keyname, '-c', 'fit-image-td', '-v', '-r' ]
         else: 
           private_key = self.keys.get("{}.key".format(keyname))

@@ -38,7 +38,28 @@ Actual initialization happens here
 """
 
 
+def load_dotenv(path: str = '.env') -> None:
+    if not os.path.exists(path):
+        return
+    with open(path, mode='r', encoding='utf-8') as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if line.startswith('export '):
+                line = line[7:].lstrip()
+            key, sep, value = line.partition('=')
+            if not sep:
+                continue
+            key = key.strip()
+            value = value.strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+                value = value[1:-1]
+            os.environ.setdefault(key, value)
+
+
 def create_app() -> Sanic:
+    load_dotenv(os.environ.get('DIGSIGSERVER_DOTENV', '.env'))
     app = Sanic(name='digsigserver', env_prefix='DIGSIGSERVER_')
     app.config.update_config(CodesignSanicDefaults)
     app.config.load_environment_vars(prefix='DIGSIGSERVER_')
@@ -98,6 +119,10 @@ async def return_tarball(req: request, workdir: str, return_filename: str = "sig
 
 
 def attach_endpoints(app: Sanic):
+    @app.get("/health")
+    async def health_handler(req: request):
+        return text("OK")
+  
     @app.post("/sign/tegra")
     async def sign_handler_tegra(req: request):
         f = validate_upload(req, "artifact")
@@ -371,12 +396,8 @@ def attach_endpoints(app: Sanic):
         if not method:
             method = "RSA"
         key_uri = req.form.get("key-uri")
-        cert_uri = req.form.get("cert-uri")
-        if backend == "pkcs11":
-          if method == "RSA" and not key_uri:
+        if backend == "pkcs11" and not key_uri:
             return text("Key URI missing for PKCS#11 backend", status=400)
-          elif method == "CMS" and (not key_uri or not cert_uri):
-            return text("Key URI or cert URI missing for CMS signing with PKCS#11 backend", status=400)  
         f = validate_upload(req, "sw-description")
         if not f:
             return text("Invalid sw-description", status=400)
@@ -392,7 +413,7 @@ def attach_endpoints(app: Sanic):
                 infile.write(f.body.decode('UTF-8'))
             if await asyncio.get_running_loop().run_in_executor(None, s.sign,
                                                                 method, "sw-description",
-                                                                outfile.name, key_uri, cert_uri):
+                                                                outfile.name, key_uri):
                 await return_file(req, outfile.name, "sw-description.sig")
                 response = None
             else:

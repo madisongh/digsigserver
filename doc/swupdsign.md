@@ -27,7 +27,7 @@ Request type: `POST`
 Endpoint: `/sign/swupdate`
 
 Expected parameters:
-* `distro=<distro>` - a name for the "distro", used to locate the signing keys (ignored and may be ommited for `backend=pkcs11`)
+* `distro=<distro>` - a name for the "distro", used to locate the signing keys
 * `sw-description=<body>` - the contents of the `sw-description` file to have signatures included
 
 Optional parameters:

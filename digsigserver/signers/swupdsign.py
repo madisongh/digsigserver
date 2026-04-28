@@ -11,9 +11,9 @@ class SwupdateSigner(Signer):
         if not signcmd:
             raise RuntimeError('no openssl command')
         self.signcmd = signcmd
-        super().__init__(app, workdir, distro, backend, load_keys=backend != 'pkcs11')
+        super().__init__(app, workdir, distro, backend)
 
-    def sign(self, method: str, sw_description: str, outfile: str, key_uri: str = None, cert_uri: str = None) -> bool:
+    def sign(self, method: str, sw_description: str, outfile: str, key_uri: str = None) -> bool:
         match (method, self.backend):
             case ("RSA", "ssl"):
                 privkey = self.keys.get('rsa-private.key')
@@ -31,13 +31,16 @@ class SwupdateSigner(Signer):
             case ("RSA", "pkcs11"):
                 if not key_uri:
                     raise RuntimeError('Key URI missing for RSA signing with PKCS#11 backend')
+                key_uri = key_uri.replace('pin-value=password', 'pin-value=' + self.app.config.get('YUBIHSM_PASSWORD'))
                 cmd = [self.signcmd, 'dgst', '-sha256', '-engine', 'pkcs11',
                        '-keyform', 'ENGINE', '-sign', key_uri, '-out', outfile, sw_description]
             case ("CMS", "pkcs11"):
-                if not key_uri or not cert_uri:
-                    raise RuntimeError('Key URI or cert URI missing for CMS signing with PKCS#11 backend')
+                if not key_uri:
+                    raise RuntimeError('Key URI missing for CMS signing with PKCS#11 backend')
+                key_uri = key_uri.replace('pin-value=password', 'pin-value=' + self.app.config.get('YUBIHSM_PASSWORD'))
+                cert_uri = self.keys.get("cms.cert")
                 cmd = [self.signcmd, 'cms', '-sign', '-engine', 'pkcs11',
-                       '-keyform', 'ENGINE', '-in', sw_description, '-out', outfile,
+                       '-keyform', 'engine', '-in', sw_description, '-out', outfile,
                        '-signer', cert_uri, '-inkey', key_uri, '-outform', 'DER',
                        '-nosmimecap', '-binary']
             case _:
