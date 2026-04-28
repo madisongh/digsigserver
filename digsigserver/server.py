@@ -20,6 +20,7 @@ from digsigserver.signers.uefisign import UefiSigner
 from digsigserver.signers.ueficapsulesign import UefiCapsuleSigner
 from digsigserver.signers.ekbsign import EKBSigner
 from digsigserver.signers.fitimagesign import FitImageSigner
+from digsigserver.logredaction import install_log_redaction_filter
 from . import utils
 
 # Signing can take a loooong time, so set a more reasonable
@@ -63,9 +64,18 @@ def create_app() -> Sanic:
     app = Sanic(name='digsigserver', env_prefix='DIGSIGSERVER_')
     app.config.update_config(CodesignSanicDefaults)
     app.config.load_environment_vars(prefix='DIGSIGSERVER_')
+    install_log_redaction_filter([app.config.get('YUBIHSM_PASSWORD')])
     logger.setLevel(app.config.get("LOG_LEVEL"))
+    attach_exception_handlers(app)
     attach_endpoints(app)
     return app
+
+
+def attach_exception_handlers(app: Sanic):
+    @app.exception(Exception)
+    async def handle_unexpected_error(req: request, exc: Exception):
+        logger.exception('Unhandled application failure')
+        return text('Signing error', status=500)
 
 
 def config_get(item: str, default_value=None) -> str:
@@ -122,7 +132,7 @@ def attach_endpoints(app: Sanic):
     @app.get("/health")
     async def health_handler(req: request):
         return text("OK")
-  
+
     @app.post("/sign/tegra")
     async def sign_handler_tegra(req: request):
         f = validate_upload(req, "artifact")
@@ -389,9 +399,9 @@ def attach_endpoints(app: Sanic):
     @app.post("/sign/swupdate")
     async def sign_handler_swupdate(req: request):
         distro = req.form.get("distro")
-        backend = req.form.get("backend")
-        if not distro and (not backend or backend != "pkcs11"):
+        if not distro:
             return text("Distro name missing", status=400)
+        backend = req.form.get("backend")
         method = req.form.get("method")
         if not method:
             method = "RSA"
