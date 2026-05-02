@@ -197,7 +197,10 @@ class TegraSigner (Signer):
             cfg_args = cfg_args.format(self.machine)
         cmd += ['flash.xml.in', env['DTBFILE'], cfg_args, env['ODMDATA']]
 
-        if self.soctype == 'tegra210':
+        # Clients should *remove* the boardcfg= setting from the MANIFEST
+        # if they have updated their meta-tegra layer to kirkstone-l4t-r32.7.x
+        # revision 9ab3ce030 or later.
+        if self.soctype == 'tegra210' and 'boardcfg' in env:
             cmd.append(env['boardcfg'])
 
         cmd.append(env['LNXFILE'])
