@@ -97,6 +97,7 @@ class FitImageSigner (Signer):
             cmd = ['mkimage', '-E', '-F', '-N', 'pkcs11', '-k', selected_keyname, '-v']
         else:
             private_key = self.keys.get("{}.key".format(selected_keyname))
+            self.keys.get("{}.crt".format(selected_keyname))
             cmd = ['mkimage', '-F', '-k', os.path.dirname(private_key)]
 
         if comment:

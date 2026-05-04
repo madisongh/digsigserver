@@ -224,8 +224,9 @@ def attach_endpoints(app: Sanic):
             except ValueError:
                 return text("Invalid parameters", status=400)
 
-            with open(os.path.join(workdir, "artifact"), "wb") as artifact:
-                artifact.write(f.body)
+            fitimage_path = os.path.join(workdir, "fitImage")
+            with open(fitimage_path, "wb") as fitimage:
+                fitimage.write(f.body)
 
             dtb_path = None
             if dtb:
@@ -236,15 +237,20 @@ def attach_endpoints(app: Sanic):
             outfile = tempfile.NamedTemporaryFile(delete=False)
             outfile.close()
             if await asyncio.get_running_loop().run_in_executor(None, s.sign,
-                                   artifact.name,
+                                   fitimage_path,
                                    dtb_path,
                                    req.form.get("external_data_offset"),
                                    req.form.get("mark_required"),
                                     req.form.get("algo"),
                                    keyname,
                                    req.form.get("comment")):
-                await return_file(req, artifact.name, "artifact.signed")
-                response = None
+                if dtb_path:
+                    dtb_name = os.path.basename(dtb_path)
+                    response = await return_tarball(req, workdir, return_filename="signed-fitImage.tar.gz",
+                                                   files_to_return=["fitImage", dtb_name])
+                else:
+                    await return_file(req, fitimage_path, "fitImage.signed")
+                    response = None
             else:
                 response = text("Signing error", status=500)
         return response
