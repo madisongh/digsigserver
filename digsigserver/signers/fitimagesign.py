@@ -12,8 +12,8 @@ class FitImageSigner (Signer):
 
     keytag = 'fitimagesign'
 
-    def __init__(self, app: Sanic, workdir: str, backend: str):
-        super().__init__(app, workdir, 'imx', backend, load_keys=backend != 'pkcs11')
+    def __init__(self, app: Sanic, workdir: str, machine: str = "imx", backend: str):
+        super().__init__(app, workdir, machine, backend, load_keys=backend != 'pkcs11')
 
     def _prepare_path(self) -> dict:
         env = dict(copy.deepcopy(os.environ))

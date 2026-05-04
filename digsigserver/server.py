@@ -220,7 +220,7 @@ def attach_endpoints(app: Sanic):
             keyname = "dev"
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = FitImageSigner(app, workdir, backend)
+                s = FitImageSigner(app, workdir, req.form.get("machine") or "imx", backend)
             except ValueError:
                 return text("Invalid parameters", status=400)
 
