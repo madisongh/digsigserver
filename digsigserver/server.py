@@ -211,6 +211,7 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
+        dtb = validate_upload(req, "dtb")
         backend = req.form.get("backend")
         keyname = req.form.get("keyname")
         if backend == "pkcs11" and not keyname:
@@ -226,11 +227,17 @@ def attach_endpoints(app: Sanic):
             with open(os.path.join(workdir, "artifact"), "wb") as artifact:
                 artifact.write(f.body)
 
+            dtb_path = None
+            if dtb:
+                dtb_path = os.path.join(workdir, dtb.name or "u-boot.dtb")
+                with open(dtb_path, "wb") as dtb_file:
+                    dtb_file.write(dtb.body)
+
             outfile = tempfile.NamedTemporaryFile(delete=False)
             outfile.close()
             if await asyncio.get_running_loop().run_in_executor(None, s.sign,
                                    artifact.name,
-                                   None,
+                                   dtb_path,
                                    req.form.get("external_data_offset"),
                                    req.form.get("mark_required"),
                                     req.form.get("algo"),
