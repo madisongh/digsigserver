@@ -5,6 +5,7 @@ import re
 import os
 
 from sanic import Sanic, request
+from sanic.exceptions import SanicException
 from sanic.log import logger
 from sanic.response import text
 
@@ -53,6 +54,8 @@ def create_app() -> Sanic:
 def attach_exception_handlers(app: Sanic):
     @app.exception(Exception)
     async def handle_unexpected_error(req: request, exc: Exception):
+        if isinstance(exc, SanicException):
+            raise exc
         logger.exception('Unhandled application failure')
         return text('Signing error', status=500)
 

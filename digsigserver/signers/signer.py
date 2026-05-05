@@ -14,10 +14,16 @@ class Signer:
                  backend: Optional[str] = None, load_keys: bool = True):
         self.app = app
         self.workdir = workdir
+        self.key_selector = key_selector
         self.backend = backend or 'ssl'
         self.keys = None
         if load_keys:
             self.keys = KeyFiles(app, self.keytag, key_selector)
+
+    def ensure_keys_loaded(self) -> KeyFiles:
+        if not self.keys:
+            self.keys = KeyFiles(self.app, self.keytag, self.key_selector)
+        return self.keys
 
     def sign(self, *args) -> bool:
         raise RuntimeError("unimplemented sign method")

@@ -11,18 +11,20 @@ class SwupdateSigner(Signer):
         if not signcmd:
             raise RuntimeError('no openssl command')
         self.signcmd = signcmd
-        super().__init__(app, workdir, distro, backend)
+        super().__init__(app, workdir, distro, backend, load_keys=backend != 'pkcs11')
 
     def sign(self, method: str, sw_description: str, outfile: str, key_uri: str = None) -> bool:
         match (method, self.backend):
             case ("RSA", "ssl"):
-                privkey = self.keys.get('rsa-private.key')
+                keys = self.ensure_keys_loaded()
+                privkey = keys.get('rsa-private.key')
                 if not privkey:
                     raise RuntimeError('RSA private key missing for swupdate signing')
                 cmd = [self.signcmd, 'dgst', '-sha256', '-sign', privkey, '-out', outfile, sw_description]
             case ("CMS", "ssl"):
-                cms_cert = self.keys.get('cms.cert')
-                cms_key = self.keys.get('cms-private.key')
+                keys = self.ensure_keys_loaded()
+                cms_cert = keys.get('cms.cert')
+                cms_key = keys.get('cms-private.key')
                 if not cms_cert or not cms_key:
                     raise RuntimeError('CMS cert or private key missing for swupdate signing')
                 cmd = [self.signcmd, 'cms', '-sign', '-in', sw_description, '-out', outfile,
@@ -38,7 +40,7 @@ class SwupdateSigner(Signer):
                 if not key_uri:
                     raise RuntimeError('Key URI missing for CMS signing with PKCS#11 backend')
                 key_uri = key_uri.replace('pin-value=password', 'pin-value=' + self.app.config.get('YUBIHSM_PASSWORD'))
-                cert_uri = self.keys.get("cms.cert")
+                cert_uri = self.ensure_keys_loaded().get('cms.cert')
                 cmd = [self.signcmd, 'cms', '-sign', '-engine', 'pkcs11',
                        '-keyform', 'engine', '-in', sw_description, '-out', outfile,
                        '-signer', cert_uri, '-inkey', key_uri, '-outform', 'DER',

@@ -99,19 +99,21 @@ To build the image :
 
     docker build . -f docker/Dockerfile.nxp-hsm -t digsigserver-nxp-hsm:latest
 
+This image has been updated and tested in limited capacity only. It may still
+require platform-specific adjustments depending on the host architecture and
+Docker builder configuration.
+
 ## Running
 
 For i.MX signing with the YubiHSM 2, the imx-cst-keys.tar.gz file only needs to contain the crts/SRK_table_1_2_3_4.bin file. The USB bus 
-must be shared with the host. Also the YUBIHSM_PASSWORD environment variable is set to the password set for the YubiHSM 2 with the prefix "0001" 
+must be shared with the host. Also the DIGSIGSERVER_YUBIHSM_PASSWORD environment variable is set to the password set for the YubiHSM 2 with the prefix "0001" 
 as this is the object id of the authentication object that pkcs11 uses to authenticate whith the token. So if the YubiHSM 2 password is 
 "password" and MACHINE is imx8mp, then the signing server would be started as follows :
 
 docker run -d \
   --restart unless-stopped \
   --privileged -v /dev/bus/usb:/dev/bus/usb \
-  --env "YUBIHSM_PASSWORD=0001password" \
+  --env "DIGSIGSERVER_YUBIHSM_PASSWORD=0001password" \
   -p 9999:9999 \
   --mount type=bind,source=$HOME/imx-cst-keys.tar.gz,target=/digsigserver/imx8mp/imxsign/imx-cst-keys.tar.gz,readonly \
   digsigserver-nxp-hsm:latest
-
-
