@@ -5,6 +5,7 @@ import re
 import os
 
 from sanic import Sanic, request
+from sanic.exceptions import SanicException
 from sanic.log import logger
 from sanic.response import text
 
@@ -20,6 +21,7 @@ from digsigserver.signers.uefisign import UefiSigner
 from digsigserver.signers.ueficapsulesign import UefiCapsuleSigner
 from digsigserver.signers.ekbsign import EKBSigner
 from digsigserver.signers.fitimagesign import FitImageSigner
+from digsigserver.logredaction import install_log_redaction_filter
 from . import utils
 
 # Signing can take a loooong time, so set a more reasonable
@@ -42,9 +44,20 @@ def create_app() -> Sanic:
     app = Sanic(name='digsigserver', env_prefix='DIGSIGSERVER_')
     app.config.update_config(CodesignSanicDefaults)
     app.config.load_environment_vars(prefix='DIGSIGSERVER_')
+    install_log_redaction_filter([app.config.get('YUBIHSM_PASSWORD')])
     logger.setLevel(app.config.get("LOG_LEVEL"))
+    attach_exception_handlers(app)
     attach_endpoints(app)
     return app
+
+
+def attach_exception_handlers(app: Sanic):
+    @app.exception(Exception)
+    async def handle_unexpected_error(req: request, exc: Exception):
+        if isinstance(exc, SanicException):
+            raise exc
+        logger.exception('Unhandled application failure')
+        return text('Signing error', status=500)
 
 
 def config_get(item: str, default_value=None) -> str:
@@ -198,9 +211,15 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
+        backend = req.form.get("backend")
+        keyname = req.form.get("keyname")
+        if backend == "pkcs11" and not keyname:
+            return text("Key URI missing for PKCS#11 backend", status=400)
+        if not keyname:
+            keyname = "dev"
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = FitImageSigner(app, workdir)
+                s = FitImageSigner(app, workdir, backend)
             except ValueError:
                 return text("Invalid parameters", status=400)
 
@@ -214,8 +233,9 @@ def attach_endpoints(app: Sanic):
                                    None,
                                    req.form.get("external_data_offset"),
                                    req.form.get("mark_required"),
-                                   req.form.get("algo"),
-                                   req.form.get("keyname")):
+                                    req.form.get("algo"),
+                                   keyname,
+                                   req.form.get("comment")):
                 await return_file(req, artifact.name, "artifact.signed")
                 response = None
             else:
@@ -366,15 +386,19 @@ def attach_endpoints(app: Sanic):
         distro = req.form.get("distro")
         if not distro:
             return text("Distro name missing", status=400)
+        backend = req.form.get("backend")
         method = req.form.get("method")
         if not method:
             method = "RSA"
+        key_uri = req.form.get("key-uri")
+        if backend == "pkcs11" and not key_uri:
+            return text("Key URI missing for PKCS#11 backend", status=400)
         f = validate_upload(req, "sw-description")
         if not f:
             return text("Invalid sw-description", status=400)
         with tempfile.TemporaryDirectory() as workdir:
             try:
-                s = SwupdateSigner(app, workdir, distro)
+                s = SwupdateSigner(app, workdir, distro, backend)
             except ValueError:
                 logger.info("could not init signer")
                 return text("Invalid parameters", status=400)
@@ -384,7 +408,7 @@ def attach_endpoints(app: Sanic):
                 infile.write(f.body.decode('UTF-8'))
             if await asyncio.get_running_loop().run_in_executor(None, s.sign,
                                                                 method, "sw-description",
-                                                                outfile.name):
+                                                                outfile.name, key_uri):
                 await return_file(req, outfile.name, "sw-description.sig")
                 response = None
             else:

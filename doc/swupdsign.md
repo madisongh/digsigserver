@@ -30,6 +30,11 @@ Expected parameters:
 * `distro=<distro>` - a name for the "distro", used to locate the signing keys
 * `sw-description=<body>` - the contents of the `sw-description` file to have signatures included
 
+Optional parameters:
+* `method=<method>` - may be `RSA` or `CMS`, defaults to `RSA` if omitted
+* `backend=<backend-type>` - backend can be `pkcs11` or `ssl`, defaults to `ssl` if omitted
+* `key-uri=<pkcs11 key uri>` - key URI required for `backend=pkcs11`
+
 Response: a `sw-description` file with signatures inserted
 
 Example client: [swupdatesign.bbclass](https://github.com/madisongh/tegra-test-distro/blob/master/layers/meta-testdistro/classes/swupdatesign.bbclass)

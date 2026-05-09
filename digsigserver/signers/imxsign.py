@@ -22,8 +22,7 @@ class IMXSigner (Signer):
             raise ValueError("no tools available for cstversion={}".format(cstversion))
         self.soctype = soctype
         self.machine = machine
-        self.backend = backend
-        super().__init__(app, workdir, machine)
+        super().__init__(app, workdir, machine, backend)
 
     def _prepare_path(self) -> dict:
         env = dict(copy.deepcopy(os.environ))
@@ -47,7 +46,7 @@ class IMXSigner (Signer):
                 with open(cst_path, "r") as f:
                     content = f.read()
                 with open(cst_path, "w") as f:
-                    new_content = content.replace("pin-value=password", "pin-value=" + os.environ.get('YUBIHSM_PASSWORD'))
+                    new_content = content.replace("pin-value=password", "pin-value=" + self.app.config.get('YUBIHSM_PASSWORD'))
                     f.write(new_content)
             if self.run_command(command, env=env):
                 self.keys.cleanup()

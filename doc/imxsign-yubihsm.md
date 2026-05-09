@@ -204,7 +204,7 @@ The signing server can be run using the following command :
 docker run \
   --restart unless-stopped \
   --privileged -v /dev/bus/usb:/dev/bus/usb \
-  --env "YUBIHSM_PASSWORD=0001password" \
+  --env "DIGSIGSERVER_YUBIHSM_PASSWORD=0001password" \
   -p 9999:9999 \
   --mount type=bind,source=$HOME/imx-cst-keys.tar.gz,target=/digsigserver/{machine}/imxsign/imx-cst-keys.tar.gz,readonly \
   digsigserver-nxp-hsm:latest
@@ -212,9 +212,9 @@ docker run \
 Note the {machine} placeholder identifies your hardware, for example it would normally be 
 set to the MACHINE variable in a yocto build.
 
-The environment variable YUBIHSM_PASSWORD is used by the signing server to login to
-the YubiHSM. As mentioned before, the 0001 prefix is required by pkcs11, and this is
-immediately followed by the actual password.
+The environment variable DIGSIGSERVER_YUBIHSM_PASSWORD is used by the signing
+server to log in to the YubiHSM. As mentioned before, the `0001` prefix is
+required by PKCS#11, and this is immediately followed by the actual password.
 
 Also, when there is no command at the end of the 'docker run' command, the default
 command given in the dockerfile is run, in this case
@@ -261,5 +261,4 @@ curl --connect-timeout 30 --max-time 1800 --retry 4 --silent --fail \
      --output ${HOME}/imx-cst-keys/flash_evk-csf-fit.bin \
      http://172.17.0.1:9999/sign/imx
 ```
-
 

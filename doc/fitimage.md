@@ -23,7 +23,9 @@ Optional parameters:
 * `external_data_offset=<offset>` - external data offset to be used during FIT signing
 * `mark_required=<any value>` - if this parameter exists the key will be marked as required
 * `algo=<signing algorithm>` - customize the signing algorithm
-* `keyname=<name of the key to use>` - specify a keyname other than `dev`
+* `comment=<text>` - add a comment to the FIT signature node
+* `keyname=<name of the key to use or pkcs11 uri>` - specify a keyname other than `dev`; required for `backend=pkcs11`
+* `backend=<backend-type>` - backend can be `pkcs11` or `ssl`, defaults to `ssl` if omitted
 
 Response: signed binary
 
@@ -37,4 +39,3 @@ Example usage:
 ## Future improvements
 * Enable including a device tree blob in which the public key is injected.
 * Change the `imx` "machine" to something more logical, this is not machine dependent
-
