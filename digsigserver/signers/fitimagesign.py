@@ -12,7 +12,7 @@ class FitImageSigner (Signer):
 
     keytag = 'fitimagesign'
 
-    def __init__(self, app: Sanic, workdir: str, machine: str = "imx", backend: str):
+    def __init__(self, app: Sanic, workdir: str, machine: str = "imx", backend: str = None):
         super().__init__(app, workdir, machine, backend, load_keys=backend != 'pkcs11')
 
     def _prepare_path(self) -> dict:
