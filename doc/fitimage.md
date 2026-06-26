@@ -33,16 +33,19 @@ Optional parameters:
 Response: signed binary
 
 Example usage:
-    curl --connect-timeout 30 --max-time 1800 --retry 1 --fail -X POST \
-        -F external_data_offset=2000 -F "artifact=@fitImage" \
-        -F mark_required=true -F machine=tegra -F keyname=devkey \
-        --output fitImage.signed http://$DIGSIG_SERVER_IP:$DIGSIG_SERVER_PORT/sign/fitimage
+```bash
+curl --connect-timeout 30 --max-time 1800 --retry 1 --fail -X POST \
+    -F external_data_offset=2000 -F "artifact=@fitImage" \
+    -F mark_required=true -F machine=tegra -F keyname=devkey \
+    --output fitImage.signed http://$DIGSIG_SERVER_IP:$DIGSIG_SERVER_PORT/sign/fitimage
+``` 
 
-If the `dtb` parameter is specified, a tarball is return containing the signed binary and the dtb containing the public-key
+If the `dtb` parameter is specified, a tarball is returned containing the signed binary and the dtb containing the public-key
 
 Example usage:
-    curl --connect-timeout 30 --max-time 1800 --retry 1 --fail -X POST \
-        -F external_data_offset=2000 -F "artifact=@fitImage" -F "dtb=@u-boot.dtb \
-        -F mark_required=true -F machine=tegra -F keyname=devkey \
-        --output artifacts.tar.gz http://$DIGSIG_SERVER_IP:$DIGSIG_SERVER_PORT/sign/fitimage
-
+```bash
+curl --connect-timeout 30 --max-time 1800 --retry 1 --fail -X POST \
+    -F external_data_offset=2000 -F "artifact=@fitImage" -F "dtb=@u-boot.dtb \
+    -F mark_required=true -F machine=tegra -F keyname=devkey \
+    --output artifacts.tar.gz http://$DIGSIG_SERVER_IP:$DIGSIG_SERVER_PORT/sign/fitimage
+```
