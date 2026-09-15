@@ -25,7 +25,7 @@ class Signer:
             self.keys = KeyFiles(self.app, self.keytag, self.key_selector)
         return self.keys
 
-    def sign(self, *args) -> bool:
+    def sign(self, *args, **kwargs) -> bool:
         raise RuntimeError("unimplemented sign method")
 
     def run_command(self, cmd: list, cleanup: bool = True, env: Optional[dict] = None) -> bool:
