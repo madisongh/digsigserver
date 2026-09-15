@@ -9,18 +9,14 @@ from sanic.log import logger
 class IMXSigner (Signer):
 
     keytag = 'imxsign'
-    supported_soctypes = ['mx8m']
 
-    def __init__(self, app: Sanic, workdir: str, machine: str, soctype: str, cstversion: str, backend: str):
-        logger.debug("machine: {}, soctype: {}, bspversion: {}, backend: {}".format(machine, soctype, cstversion, backend))
-        if soctype not in self.supported_soctypes:
-            raise ValueError("soctype '{}' invalid".format(soctype))
+    def __init__(self, app: Sanic, workdir: str, machine: str, cstversion: str, backend: str):
+        logger.debug("machine: {}, bspversion: {}, backend: {}".format(machine, cstversion, backend))
         self.toolspath = os.path.join(app.config.get('IMX_CST_BASE'),
                                       'cst-{}'.format(cstversion),
                                       'linux64', 'bin')
         if not os.path.exists(self.toolspath):
             raise ValueError("no tools available for cstversion={}".format(cstversion))
-        self.soctype = soctype
         self.machine = machine
         super().__init__(app, workdir, machine, backend)
 

@@ -52,7 +52,6 @@ Endpoint: `/sign/imx`
 
 Expected parameters:
 * `machine=<machine-name>` - a name for the device, used to locate the signing keys
-* `soctype=<soctype>` - currently only `mx8m` recognized (but not currently used)
 * `cstversion=<cst-version>` - the version of CST (e.g., `3.3.1`)
 * `csf=<body>` - plain/text CSF description file
 * `artifact=<body>` - binary associated with the CSF description file
