@@ -208,9 +208,15 @@ def attach_endpoints(app: Sanic):
 
     @app.post("/sign/fitimage")
     async def sign_handler_fitimage(req: request):
-        f = validate_upload(req, "artifact")
-        if not f:
-            return text("Invalid artifact", status=400)
+        dummytype = req.form.get("dummytype")
+        if dummytype is not None:
+            if dummytype not in [ "auto", "auto-conf" ]:
+                return text("Invalid dummy signing type", status=400)
+            f = None
+        else:
+            f = validate_upload(req, "artifact")
+            if not f:
+                return text("Invalid artifact", status=400)
         dtb = validate_upload(req, "dtb")
         backend = req.form.get("backend")
         keyname = req.form.get("keyname")
@@ -225,8 +231,9 @@ def attach_endpoints(app: Sanic):
                 return text("Invalid parameters", status=400)
 
             fitimage_path = os.path.join(workdir, "fitImage")
-            with open(fitimage_path, "wb") as fitimage:
-                fitimage.write(f.body)
+            if f:
+                with open(fitimage_path, "wb") as fitimage:
+                    fitimage.write(f.body)
 
             dtb_path = None
             if dtb:
@@ -237,13 +244,14 @@ def attach_endpoints(app: Sanic):
             outfile = tempfile.NamedTemporaryFile(delete=False)
             outfile.close()
             if await asyncio.get_running_loop().run_in_executor(None, s.sign,
-                                   fitimage_path,
-                                   dtb_path,
-                                   req.form.get("external_data_offset"),
-                                   req.form.get("mark_required"),
-                                    req.form.get("algo"),
-                                   keyname,
-                                   req.form.get("comment")):
+                                                                fitimage_path,
+                                                                dtb_path,
+                                                                req.form.get("external_data_offset"),
+                                                                req.form.get("mark_required"),
+                                                                req.form.get("algo"),
+                                                                keyname,
+                                                                req.form.get("comment"),
+                                                                dummytype):
                 if dtb_path:
                     dtb_name = os.path.basename(dtb_path)
                     response = await return_tarball(req, workdir, return_filename="signed-fitImage.tar.gz",

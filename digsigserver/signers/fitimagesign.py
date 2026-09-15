@@ -12,7 +12,8 @@ class FitImageSigner (Signer):
 
     keytag = 'fitimagesign'
 
-    def __init__(self, app: Sanic, workdir: str, machine: str = "imx", backend: str = None):
+    def __init__(self, app: Sanic, workdir: str, machine: str = "imx",
+                 backend: Optional[str] = None):
         super().__init__(app, workdir, machine, backend, load_keys=backend != 'pkcs11')
 
     def _prepare_path(self) -> dict:
@@ -89,21 +90,28 @@ class FitImageSigner (Signer):
              mark_required: Optional[bool],
              algo: Optional[str],
              keyname: Optional[str] = None,
-             comment: Optional[str] = None) -> bool:
+             comment: Optional[str] = None,
+             dummytype: Optional[str] = None) -> bool:
         env = self._prepare_path()
         selected_keyname = self._resolve_keyname(keyname, dtb, fitimage, env)
+
         if self.backend == "pkcs11":
-            keyname = keyname.replace('pin-value=password', 'pin-value=' + self.app.config.get('YUBIHSM_PASSWORD'))
-            cmd = ['mkimage', '-E', '-F', '-N', 'pkcs11', '-k', selected_keyname, '-v']
+            selected_keyname = selected_keyname.replace('pin-value=password', 'pin-value=' + self.app.config.get('YUBIHSM_PASSWORD'))
+            cmd = ['mkimage', '-N', 'pkcs11', '-k', selected_keyname, '-v']
         else:
             private_key = self.keys.get("{}.key".format(selected_keyname))
             self.keys.get("{}.crt".format(selected_keyname))
-            cmd = ['mkimage', '-F', '-k', os.path.dirname(private_key)]
-
+            cmd = ['mkimage', '-k', os.path.dirname(private_key)]
+        if dummytype is not None:
+            cmd += ['-f', dummytype, '-d', '/dev/null']
+            if self.backend != "pkcs11":
+                cmd += ['-g', selected_keyname]
+        else:
+            cmd += ['-F']
         if comment:
             cmd += ['-c', comment]
         if external_data_offset:
-            cmd += ['-p', external_data_offset]
+            cmd += ['-E', '-p', external_data_offset]
         if mark_required:
             cmd += ['-r']
         if dtb:
