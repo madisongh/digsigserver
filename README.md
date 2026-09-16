@@ -2,26 +2,28 @@
 A simple server for processing signing requests via a REST interface, intended for
 use with a cross-build system for embedded Linux. It currently handles signing
 requests for:
-* [NVIDIA Jetson bootloader signing](doc/tegrasign.md)
+* [FIT image signing](doc/fitimage.md)
 * [Kernel module signing](doc/kmodsign.md)
 * [Mender artifact signing](doc/mendersign.md)
-* [Swupdate sw-description signing](doc/swupdsign.md)
+* [NVIDIA Jetson bootloader signing](doc/tegrasign.md)
+* [UEFI signing (for NVIDIA Jetsons)](doc/uefisign.md)
 * [NXP i.MX SoC family bootloader signing](doc/imxsign.md)
 * [OPTEE trusted application signing](doc/opteesign.md)
+* [Rockchip (downstream) bootloader signing](doc/rksign.md)
+* [Rockchip (downstream) OP-TEE signing](doc/rk-opteesign.md)
+* [Swupdate sw-description signing](doc/swupdsign.md)
 
 ## Prerequisites
-Requires Python 3.7 or later and a reasonably modern Linux distro to host
-the server.  (Tested with Ubuntu 18.04 and later.)  See [setup.cfg](setup.cfg) for
-specific Python packages required.
+Requires reasonably modern Python on a reasonably modern Linux distro to host
+the server.  See [setup.cfg](setup.cfg) for specific Python packages required.
 
 The different signers have additional prerequisites, typically involving installation
 of the vendor-supplied tools for generating and applying signatures.  Follow the
 documentation links above for more information.
 
 ## Installing
-Use `pip install` (or `pip3 install` in some cases, to ensure that you are using
-Python 3) to install this package and its dependencies.  You can do this system-wide,
-for a single user (with the `--user` option), or in a Python 3 virtual environment.
+Use a Python virtual environment, or with recent Pythons, `pipx install`, to
+install.
 
 ## Configuring
 Configuration is handled through environment variables.
@@ -34,10 +36,7 @@ supported.
 Other settings for configuring the underlying Sanic framework can also be provided.
 
 See the documentation pages on the different signers for their specific configuration
-settings (if any)/
-
-**DIGSIGSERVER_L4T_TOOLS_BASE**: path to the directory under which the L4T BSP package(s)
-have been installed.  Defaults to `/opt/nvidia`.
+settings (if any).
 
 ### Timeouts
 
