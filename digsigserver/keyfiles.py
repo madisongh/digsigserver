@@ -21,18 +21,17 @@ class KeyFiles:
         'fitimagesign'
     ]
 
-    def __init__(self, app: Sanic, signtype: str, machine_or_distro: str):
+    def __init__(self, app: Sanic, signtype: str, machine_or_distro: str,
+                 parent_dir: str):
         if signtype not in self.signing_types:
             raise RuntimeError('unrecognized signing type: {}'.format(signtype))
         self.keyfileuri = '{}/{}/{}/'.format(app.config.get('KEYFILE_URI'),
                                              machine_or_distro, signtype)
-        self.tmpdir = None
+        self.tmpdir = tempfile.TemporaryDirectory(dir=parent_dir, ignore_cleanup_errors=True)
         if not utils.uri_exists(self.keyfileuri, is_dir=True):
             raise RuntimeError('no key files found for {}/{}'.format(signtype, machine_or_distro))
 
     def get(self, keyname: str) -> str:
-        if not self.tmpdir:
-            self.tmpdir = tempfile.TemporaryDirectory()
         path = os.path.join(self.tmpdir.name, keyname)
         if os.path.exists(path):
             return path
