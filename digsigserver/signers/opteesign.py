@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric import utils
 from uuid import UUID
+import base64
 import struct
 import math
 
@@ -20,7 +21,12 @@ algorithms = {'TEE_ALG_RSASSA_PKCS1_PSS_MGF1_SHA256': 0x70414930,
               'TEE_ALG_RSASSA_PKCS1_V1_5_SHA256': 0x70004830}
 
 
-# Abridged version of scripts/sign_encrypt.py in optee-os
+# Abridged version of scripts/sign_encrypt.py in optee-os,
+# adapted from a circa-2022 version, but retained here for
+# compatibility.
+#
+# Newer clients should use the digest-based offline signing
+# method.
 def _sign_ta(img: bytes, dirpath: str, uuid: str,
              ta_version: str, key: rsa.RSAPrivateKey) -> bool:
     chosen_hash = hashes.SHA256()
@@ -82,7 +88,11 @@ class OPTEESigner (Signer):
                 return False
         for dirpath, _, filenames in os.walk(self.workdir):
             for file in filenames:
-                if file.endswith(".stripped.elf"):
+                filename_base, filename_ext = os.path.splitext(file)
+                if filename_ext == ".stripped.elf":
+                    if os.path.exists(os.path.join(dirpath, filename_base + ".dig")):
+                        logger.warning("Input package contains both stripped-elf and digest files, will use digest")
+                        continue
                     with open(os.path.join(dirpath, file), 'rb') as f:
                         img = f.read()
                     uuid = file[:-len(".stripped.elf")]
@@ -102,5 +112,22 @@ class OPTEESigner (Signer):
                         pass
                     if not os.path.exists(os.path.join(dirpath, uuid + ".ta")):
                         logger.warning("TA signing succesful, but {}.ta file is missing".format(uuid))
+                elif filename_ext == ".dig":
+                    logger.debug("Signing: {}".format(os.path.join(dirpath, file)))
+                    with open(os.path.join(dirpath, file), 'rb') as f:
+                        digest = base64.b64decode(f.read())
+                        if not self.run_command(['openssl', 'pkeyutl', '-sign',
+                                                 '-inkey', keyfile,
+                                                 '-pkeyopt', 'digest:sha256',
+                                                 '-pkeyopt', 'rsa_padding_mode:pss',
+                                                 '-pkeyopt', 'rsa_pss_saltlen:digest',
+                                                 '-pkeyopt', 'rsa_mgf1_md:sha256'],
+                                                input_bytes=digest,
+                                                output_file=os.path.join(dirpath, filename_base + ".sig"),
+                                                b64encode_output=True,
+                                                cleanup=False):
+                            self.keys.cleanup()
+                            return False
+                    os.remove(os.path.join(dirpath, file))
         self.keys.cleanup()
         return True
