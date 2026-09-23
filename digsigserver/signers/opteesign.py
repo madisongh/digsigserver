@@ -1,4 +1,5 @@
 import os
+import pathlib
 from digsigserver.signers import Signer
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
@@ -20,7 +21,6 @@ algorithms = {'TEE_ALG_RSASSA_PKCS1_PSS_MGF1_SHA256': 0x70414930,
               'TEE_ALG_RSASSA_PKCS1_V1_5_SHA256': 0x70004830}
 
 
-# Abridged version of scripts/sign_encrypt.py in optee-os
 def _sign_ta(img: bytes, dirpath: str, uuid: str,
              ta_version: str, key: rsa.RSAPrivateKey) -> bool:
     chosen_hash = hashes.SHA256()
@@ -56,6 +56,21 @@ def _sign_ta(img: bytes, dirpath: str, uuid: str,
         f.write(img)
     return True
 
+def find_signing_inputs(filenames: list) -> tuple:
+    img_file_name = img_file_base = uuid_file = taversion_file = None
+    for f in filenames:
+        p = pathlib.Path(f)
+        p_ext = "".join(p.suffixes)
+        if p_ext in [".stripped.elf", ".stripped.so"]:
+            img_file_name = f
+        elif p_ext == ".uuid":
+            uuid_file = f
+        elif p_ext == ".ta-version":
+            taversion_file = f
+        else:
+            logger.warning("unrecognized input file: {}".format(f))
+    return img_file_name, img_file_base, uuid_file, taversion_file
+
 
 class OPTEESigner (Signer):
 
@@ -81,26 +96,35 @@ class OPTEESigner (Signer):
                 self.keys.cleanup()
                 return False
         for dirpath, _, filenames in os.walk(self.workdir):
-            for file in filenames:
-                if file.endswith(".stripped.elf"):
-                    with open(os.path.join(dirpath, file), 'rb') as f:
-                        img = f.read()
-                    uuid = file[:-len(".stripped.elf")]
-                    try:
-                        with open(os.path.join(dirpath, uuid + ".ta-version"), "r") as f:
-                            ta_version = f.readline().rstrip()
-                    except FileNotFoundError:
-                        logger.warning("ta-version file missing for {}".format(uuid))
-                        ta_version = "0"
-                    if not _sign_ta(img, dirpath, uuid, ta_version, key):
-                        self.keys.cleanup()
-                        return False
-                    os.remove(os.path.join(dirpath, file))
-                    try:
-                        os.remove(os.path.join(dirpath, uuid + ".ta-version"))
-                    except FileNotFoundError:
-                        pass
-                    if not os.path.exists(os.path.join(dirpath, uuid + ".ta")):
-                        logger.warning("TA signing succesful, but {}.ta file is missing".format(uuid))
+            img_file, img_basename, uuid_file, ta_version_file = find_signing_inputs(filenames)
+            if img_file is None:
+                logger.info("nothing to sign in {}".format(dirpath))
+                continue
+            to_remove = filenames
+            with open(os.path.join(dirpath, img_file), 'rb') as f:
+                img = f.read()
+            if uuid_file is None:
+                logger.warning("uuid file missing, using {}".format(img_basename))
+                uuid = img_basename
+            else:
+                with open(os.path.join(dirpath, uuid_file), "r") as f:
+                    uuid = f.readline().rstrip()
+            if ta_version_file is None:
+                logger.warning("ta-version file missing, using 0")
+                ta_version = "0"
+            else:
+                with open(os.path.join(dirpath, ta_version_file), "r") as f:
+                    ta_version = f.readline().rstrip()
+            if not _sign_ta(img, dirpath, uuid, ta_version, key):
+                logger.warning("Failed to sign TA for UUID {}".format(uuid))
+                self.keys.cleanup()
+                return False
+            logger.debug("Removing: {}".format(to_remove))
+            for fname in to_remove:
+                os.remove(os.path.join(dirpath, fname))
+            if os.path.exists(os.path.join(dirpath, uuid + ".ta")):
+                logger.info("Signed: {} -> {}.ta".format(img_file, uuid))
+            else:
+                logger.warning("TA signing for {} successful, but {}.ta file is missing".format(file, uuid))
         self.keys.cleanup()
         return True
