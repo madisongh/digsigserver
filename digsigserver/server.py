@@ -116,16 +116,16 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
-                s = TegraSigner(app, workdir, req.form.get("machine"), req.form.get("soctype"),
+                s = TegraSigner(app, topdir, req.form.get("machine"), req.form.get("soctype"),
                                 req.form.get("bspversion"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
-            if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, workdir, f):
+            if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, s.workdir, f):
                 try:
-                    envvars = parse_manifest(os.path.join(workdir, 'MANIFEST'))
+                    envvars = parse_manifest(os.path.join(s.workdir, 'MANIFEST'))
                 except ValueError:
                     return text("Invalid manifest", status=400)
                 if 'BUPGENSPECS' in envvars:
@@ -135,7 +135,7 @@ def attach_endpoints(app: Sanic):
                 else:
                     result = await asyncio.get_running_loop().run_in_executor(None, s.sign, envvars)
                 if result:
-                    return await return_tarball(req, workdir)
+                    return await return_tarball(req, s.workdir)
         return text("Signing error", status=500)
 
     @app.post("/sign/rk")
@@ -143,9 +143,9 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
-                s = RockchipSigner(app, workdir, req.form.get("machine"), req.form.get("soctype"))
+                s = RockchipSigner(app, topdir, req.form.get("machine"), req.form.get("soctype"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
@@ -156,15 +156,15 @@ def attach_endpoints(app: Sanic):
             if artifact_type == "fit-image":
                 external_data_offset = req.form.get("external_data_offset", "")
                 if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files,
-                                                                    workdir, f):
+                                                                    s.workdir, f):
                     if await asyncio.get_running_loop().run_in_executor(None, s.sign, artifact_type,
                                                                         burn_key_hash, None, None, external_data_offset):
-                        await return_tarball(req, workdir, s.fit_image_output_files)
+                        await return_tarball(req, s.workdir, s.fit_image_output_files)
                         response = None
                     else:
                         response = text("Signing error", status=500)
             else:
-                with open(os.path.join(workdir, "artifact"), "wb") as artifact:
+                with open(os.path.join(s.workdir, "artifact"), "wb") as artifact:
                     artifact.write(f.body)
                 outfile = tempfile.NamedTemporaryFile(delete=False)
                 outfile.close()
@@ -184,16 +184,16 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
-                s = IMXSigner(app, workdir, req.form.get("machine"),
+                s = IMXSigner(app, topdir, req.form.get("machine"),
                               req.form.get("cstversion"), req.form.get("backend"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
-            with open(os.path.join(workdir, "csf-input.txt"), "w") as csfinput:
+            with open(os.path.join(s.workdir, "csf-input.txt"), "w") as csfinput:
                 csfinput.write(csf.body.decode('UTF-8'))
-            with open(os.path.join(workdir, f.name), "wb") as artifact:
+            with open(os.path.join(s.workdir, f.name), "wb") as artifact:
                 artifact.write(f.body)
 
             outfile = tempfile.NamedTemporaryFile(delete=False)
@@ -224,20 +224,20 @@ def attach_endpoints(app: Sanic):
             return text("Key URI missing for PKCS#11 backend", status=400)
         if not keyname:
             keyname = "dev"
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
-                s = FitImageSigner(app, workdir, req.form.get("machine") or "imx", backend)
+                s = FitImageSigner(app, topdir, req.form.get("machine") or "imx", backend)
             except ValueError:
                 return text("Invalid parameters", status=400)
 
-            fitimage_path = os.path.join(workdir, "fitImage")
+            fitimage_path = os.path.join(s.workdir, "fitImage")
             if f:
                 with open(fitimage_path, "wb") as fitimage:
                     fitimage.write(f.body)
 
             dtb_path = None
             if dtb:
-                dtb_path = os.path.join(workdir, dtb.name or "u-boot.dtb")
+                dtb_path = os.path.join(s.workdir, dtb.name or "u-boot.dtb")
                 with open(dtb_path, "wb") as dtb_file:
                     dtb_file.write(dtb.body)
 
@@ -254,7 +254,7 @@ def attach_endpoints(app: Sanic):
                                                                 dummytype):
                 if dtb_path:
                     dtb_name = os.path.basename(dtb_path)
-                    response = await return_tarball(req, workdir, return_filename="signed-fitImage.tar.gz",
+                    response = await return_tarball(req, s.workdir, return_filename="signed-fitImage.tar.gz",
                                                    files_to_return=["fitImage", dtb_name])
                 else:
                     await return_file(req, fitimage_path, "fitImage.signed")
@@ -268,16 +268,16 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
-                s = KernelModuleSigner(app, workdir, req.form.get("machine"), req.form.get("hashalg", "sha512"))
+                s = KernelModuleSigner(app, topdir, req.form.get("machine"), req.form.get("hashalg", "sha512"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
-            if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, workdir, f):
+            if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, s.workdir, f):
                 result = await asyncio.get_running_loop().run_in_executor(None, s.sign)
                 if result:
-                    return await return_tarball(req, workdir)
+                    return await return_tarball(req, s.workdir)
         return text("Signing error", status=500)
 
     @app.post("/sign/tegra/uefi")
@@ -285,10 +285,10 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
                 s = UefiSigner(app,
-                               workdir,
+                               topdir,
                                req.form.get("machine"),
                                req.form.get("signing_type"))
             except ValueError:
@@ -297,7 +297,7 @@ def attach_endpoints(app: Sanic):
             signing_type = req.form.get("signing_type").lower()
             if signing_type not in ["sbsign", "signature", "attach_signature"]:
                 return text("Invalid signing type", status=400)
-            with open(os.path.join(workdir, "artifact"), "wb") as artifact:
+            with open(os.path.join(s.workdir, "artifact"), "wb") as artifact:
                 artifact.write(f.body)
             outfile = tempfile.NamedTemporaryFile(delete=False)
             outfile.close()
@@ -317,11 +317,11 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
                 s = UefiCapsuleSigner(
                     app,
-                    workdir,
+                    topdir,
                     req.form.get("machine"),
                     req.form.get("soctype"),
                     req.form.get("bspversion"),
@@ -329,7 +329,7 @@ def attach_endpoints(app: Sanic):
             except ValueError:
                 return text("Invalid parameters", status=400)
 
-            with open(os.path.join(workdir, "artifact"), "wb") as artifact:
+            with open(os.path.join(s.workdir, "artifact"), "wb") as artifact:
                 artifact.write(f.body)
             outfile = tempfile.NamedTemporaryFile(delete=False)
             outfile.close()
@@ -349,16 +349,16 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
-                s = OPTEESigner(app, workdir, req.form.get("machine"))
+                s = OPTEESigner(app, topdir, req.form.get("machine"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
-            if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, workdir, f):
+            if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, s.workdir, f):
                 result = await asyncio.get_running_loop().run_in_executor(None, s.sign)
                 if result:
-                    return await return_tarball(req, workdir)
+                    return await return_tarball(req, s.workdir)
         return text("Signing error", status=500)
 
     @app.post("/sign/rkoptee-tee")
@@ -366,17 +366,17 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
-                s = RockchipOpteeSigner(app, workdir, req.form.get("machine"))
+                s = RockchipOpteeSigner(app, topdir, req.form.get("machine"))
             except ValueError:
                 return text("Invalid parameters", status=400)
-            with open(os.path.join(workdir, "tee.bin"), "wb") as artifact:
+            with open(os.path.join(s.workdir, "tee.bin"), "wb") as artifact:
                 artifact.write(f.body)
             outfile = tempfile.NamedTemporaryFile(delete=False)
             outfile.close()
             if await asyncio.get_running_loop().run_in_executor(None, s.resign_tee,
-                                                                os.path.join(workdir, "tee.bin"),
+                                                                os.path.join(s.workdir, "tee.bin"),
                                                                 outfile.name):
                 await return_file(req, outfile.name, "tee.bin.signed")
                 response = None
@@ -390,16 +390,16 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "artifact")
         if not f:
             return text("Invalid artifact", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
-                s = RockchipOpteeSigner(app, workdir, req.form.get("machine"))
+                s = RockchipOpteeSigner(app, topdir, req.form.get("machine"))
             except ValueError:
                 return text("Invalid parameters", status=400)
 
-            if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, workdir, f):
+            if await asyncio.get_running_loop().run_in_executor(None, utils.extract_files, s.workdir, f):
                 result = await asyncio.get_running_loop().run_in_executor(None, s.resign_tas)
                 if result:
-                    return await return_tarball(req, workdir)
+                    return await return_tarball(req, s.workdir)
         return text("Signing error", status=500)
 
     @app.post("/sign/swupdate")
@@ -417,15 +417,15 @@ def attach_endpoints(app: Sanic):
         f = validate_upload(req, "sw-description")
         if not f:
             return text("Invalid sw-description", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
-                s = SwupdateSigner(app, workdir, distro, backend)
+                s = SwupdateSigner(app, topdir, distro, backend)
             except ValueError:
                 logger.info("could not init signer")
                 return text("Invalid parameters", status=400)
             outfile = tempfile.NamedTemporaryFile(delete=False)
             outfile.close()
-            with open(os.path.join(workdir, "sw-description"), "w") as infile:
+            with open(os.path.join(s.workdir, "sw-description"), "w") as infile:
                 infile.write(f.body.decode('UTF-8'))
             if await asyncio.get_running_loop().run_in_executor(None, s.sign,
                                                                 method, "sw-description",
@@ -445,9 +445,9 @@ def attach_endpoints(app: Sanic):
         distro = req.form.get('distro')
         if not distro:
             return text("Distro name missing", status=400)
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
-                s = MenderSigner(app, workdir, distro, artifact)
+                s = MenderSigner(app, topdir, distro, artifact)
             except ValueError:
                 return text("Invalid parameters", status=400)
             if await asyncio.get_running_loop().run_in_executor(None, s.sign):
@@ -457,11 +457,11 @@ def attach_endpoints(app: Sanic):
 
     @app.post("/sign/tegra/ekb")
     async def get_handler_ekb(req: request):
-        with tempfile.TemporaryDirectory() as workdir:
+        with tempfile.TemporaryDirectory() as topdir:
             try:
                 s = EKBSigner(
                     app,
-                    workdir,
+                    topdir,
                     req.form.get("machine"),
                     req.form.get("soctype"),
                     req.form.get("bspversion"))
