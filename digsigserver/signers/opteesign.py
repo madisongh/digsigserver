@@ -125,6 +125,6 @@ class OPTEESigner (Signer):
             if os.path.exists(os.path.join(dirpath, uuid + ".ta")):
                 logger.info("Signed: {} -> {}.ta".format(img_file, uuid))
             else:
-                logger.warning("TA signing for {} successful, but {}.ta file is missing".format(file, uuid))
+                logger.warning("TA signing for {} successful, but {}.ta file is missing".format(img_file, uuid))
         self.keys.cleanup()
         return True
